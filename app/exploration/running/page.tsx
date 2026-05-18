@@ -147,49 +147,61 @@ function toEndOfDay(value: string): Date {
 }
 
 export default function RunningPage() {
-  const router = useRouter();
-   const [activities, setActivities] = useState<Activity[]>([]);
-   const [loading, setLoading] = useState(true);
-   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
-  const [isDesktop, setIsDesktop] = useState(false);
-  const [filters, setFilters] = useState({
-    dateFrom: undefined as Date | undefined,
-    dateTo: undefined as Date | undefined,
-    types: [] as string[],
-    minDistance: undefined as number | undefined,
-    maxDistance: undefined as number | undefined,
-  });
-  const [sortBy, setSortBy] = useState<RunningSortValue>('date_desc');
-  const [error, setError] = useState<string | null>(null);
-  // summary = filtrato (cambia con i filtri); globalSummary = sempre totale running (hero statico)
-  const [summary, setSummary] = useState<GarminSummary | null>(null);
-  const [globalSummary, setGlobalSummary] = useState<GarminSummary | null>(null);
+   const router = useRouter();
+    const [activities, setActivities] = useState<Activity[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
+   const [isDesktop, setIsDesktop] = useState(false);
+   const [filters, setFilters] = useState({
+     dateFrom: undefined as Date | undefined,
+     dateTo: undefined as Date | undefined,
+     types: [] as string[],
+     minDistance: undefined as number | undefined,
+     maxDistance: undefined as number | undefined,
+   });
+   const [sortBy, setSortBy] = useState<RunningSortValue>('date_desc');
+   const [error, setError] = useState<string | null>(null);
+   const [offset, setOffset] = useState(0);
+   const [hasMoreToLoad, setHasMoreToLoad] = useState(true);
+   // summary = filtrato (cambia con i filtri); globalSummary = sempre totale running (hero statico)
+   const [summary, setSummary] = useState<GarminSummary | null>(null);
+   const [globalSummary, setGlobalSummary] = useState<GarminSummary | null>(null);
 
-  const isDefaultQuery =
-    !filters.dateFrom &&
-    !filters.dateTo &&
-    filters.types.length === 0 &&
-    typeof filters.minDistance !== 'number' &&
-    typeof filters.maxDistance !== 'number' &&
-    sortBy === 'date_desc';
+   const isDefaultQuery =
+     !filters.dateFrom &&
+     !filters.dateTo &&
+     filters.types.length === 0 &&
+     typeof filters.minDistance !== 'number' &&
+     typeof filters.maxDistance !== 'number' &&
+     sortBy === 'date_desc';
 
-  const requestQuery = useMemo(() => {
-    const params = new URLSearchParams({
-      group: 'running',
-      limit: '20',
-      offset: '0',
-      sort: sortBy,
-      include_photos: '0',
-    });
+   const requestQuery = useMemo(() => {
+     const params = new URLSearchParams({
+       group: 'running',
+       limit: '100',
+       offset: String(offset),
+       sort: sortBy,
+       include_photos: '1',
+     });
 
     if (filters.dateFrom) params.set('date_from', filters.dateFrom.toISOString());
     if (filters.dateTo) params.set('date_to', filters.dateTo.toISOString());
     if (filters.types.length > 0) params.set('types', filters.types.join(','));
     if (typeof filters.minDistance === 'number') params.set('min_distance_m', String(Math.round(filters.minDistance)));
-    if (typeof filters.maxDistance === 'number') params.set('max_distance_m', String(Math.round(filters.maxDistance)));
+     if (typeof filters.maxDistance === 'number') params.set('max_distance_m', String(Math.round(filters.maxDistance)));
 
-    return params.toString();
-  }, [filters, sortBy]);
+     return params.toString();
+   }, [filters, sortBy, offset]);
+
+    const paginationResetKey = useMemo(() => {
+      const types = filters.types.join(',');
+      const dateFrom = filters.dateFrom ? filters.dateFrom.toISOString() : '';
+      const dateTo = filters.dateTo ? filters.dateTo.toISOString() : '';
+      const minDistance = typeof filters.minDistance === 'number' ? String(filters.minDistance) : '';
+      const maxDistance = typeof filters.maxDistance === 'number' ? String(filters.maxDistance) : '';
+      return [sortBy, types, dateFrom, dateTo, minDistance, maxDistance].join('|');
+    }, [filters, sortBy]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 1024px)');
@@ -266,116 +278,145 @@ export default function RunningPage() {
       minDistance: state.distanceMin ? Number.parseFloat(state.distanceMin) * 1000 : undefined,
       maxDistance: state.distanceMax ? Number.parseFloat(state.distanceMax) * 1000 : undefined,
     });
+    setOffset(0);
+    setActivities([]);
+    setHasMoreToLoad(true);
   };
 
-  const resetRunningFilters = () => {
-    setFilters({ dateFrom: undefined, dateTo: undefined, types: [], minDistance: undefined, maxDistance: undefined });
-  };
+   const resetRunningFilters = () => {
+     setFilters({ dateFrom: undefined, dateTo: undefined, types: [], minDistance: undefined, maxDistance: undefined });
+      setOffset(0);
+      setActivities([]);
+      setHasMoreToLoad(true);
+   };
 
-  useEffect(() => {
-    const abortController = new AbortController();
-    let isActive = true;
-
-    const fetchActivities = async () => {
-      const cached = ENABLE_ACTIVITY_CACHE && isDefaultQuery ? getCachedActivities<CachedActivity[]>('running') : null;
-
-      if (isActive) {
-        setLoading(true);
-      }
-
-      if (cached && cached.length > 0) {
-        const normalizedCached = cached.map(normalizeRunningActivity);
-        if (isActive) {
-          setActivities(normalizedCached);
-          setLoading(false);
-        }
-      }
-
-      try {
-        const response = await fetch(`/api/activities/garmin?${requestQuery}`, {
-          signal: abortController.signal,
-        });
-        if (!response.ok) {
-          const raw = await response.text();
-          console.error('GET /api/activities/garmin failed', response.status, raw);
-          throw new Error('Impossibile caricare le attività in questo momento.');
-        }
-
-        const data: GarminApiResponse = await response.json();
-
-        if (data.status === 'success') {
-          const source: GarminApiActivity[] = data?.data?.recent_activities ?? [];
-
-          const runningActivities = source
-            .map((act, index) => {
-              const distanceM = act.distance_m ?? 0;
-              const durationSec = act.duration_sec ?? 0;
-              const dateIso = act.date ?? new Date(0).toISOString();
-
-              return {
-                id: act._id ?? `${act.name}-${dateIso}-${distanceM}-${index}`,
-                name: act.name,
-                type: act.type,
-                date: new Date(dateIso).toLocaleDateString('it-IT'),
-                originalDate: dateIso,
-                distance_km: (distanceM / 1000).toFixed(2),
-                distance_formatted: formatDistance(distanceM),
-                duration_sec: durationSec,
-                duration_min: Math.round(durationSec / 60),
-                duration_formatted: formatDurationFromSeconds(durationSec),
-                calories_kcal: act.calories_kcal ?? 0,
-                pace_min_per_km: act.pace_min_per_km ?? undefined,
-                photo: act.photo ?? null,
-              };
-            });
-
-          if (!isActive) {
-            return;
-          }
-
-          setActivities(runningActivities);
-          // global_summary: hero sempre sul totale running, indipendente dai filtri
-          const gs = data?.data?.global_summary ?? data?.data?.summary ?? null;
-          const fs = data?.data?.filtered_summary ?? data?.data?.summary ?? null;
-          if (gs) setGlobalSummary(gs);
-          setSummary(fs);
-          if (ENABLE_ACTIVITY_CACHE && isDefaultQuery) {
-            setCachedActivities(runningActivities, 'running');
-          }
-          setError(null);
-          return;
-        }
-
-        throw new Error('Formato risposta API non valido.');
-      } catch (fetchError) {
-        if ((fetchError instanceof Error && fetchError.name === 'AbortError') || !isActive) {
-          return;
-        }
-
-        console.error('Error fetching activities:', fetchError);
-
-        if (cached && cached.length > 0) {
-          const normalizedCached = cached.map(normalizeRunningActivity);
-          setActivities(normalizedCached);
-          setSummary(null);
-          setError('Connessione instabile: sto mostrando dati recenti dalla cache.');
-        } else {
-          setError('Impossibile caricare le attività. Controlla la connessione al database.');
-        }
-      } finally {
-        if (isActive) {
-          setLoading(false);
-        }
-      }
+    const handleSortChange = (value: RunningSortValue) => {
+      setSortBy(value);
+      setOffset(0);
+      setActivities([]);
+      setHasMoreToLoad(true);
     };
 
-    void fetchActivities();
+   useEffect(() => {
+     const abortController = new AbortController();
+     let isActive = true;
 
-    return () => {
-      isActive = false;
-      abortController.abort();
-    };
-  }, [requestQuery, isDefaultQuery]);
+     const fetchActivities = async () => {
+       const isLoadingMore = offset > 0;
+       const cached = ENABLE_ACTIVITY_CACHE && isDefaultQuery && !isLoadingMore ? getCachedActivities<CachedActivity[]>('running') : null;
+
+       if (isActive && !isLoadingMore) {
+         setLoading(true);
+       } else if (isActive && isLoadingMore) {
+         setLoadingMore(true);
+       }
+
+       if (cached && cached.length > 0 && !isLoadingMore) {
+         const normalizedCached = cached.map(normalizeRunningActivity);
+         if (isActive) {
+           setActivities(normalizedCached);
+           setLoading(false);
+         }
+       }
+
+       try {
+         const response = await fetch(`/api/activities/garmin?${requestQuery}`, {
+           signal: abortController.signal,
+         });
+         if (!response.ok) {
+           const raw = await response.text();
+           console.error('GET /api/activities/garmin failed', response.status, raw);
+           throw new Error('Impossibile caricare le attività in questo momento.');
+         }
+
+         const data: GarminApiResponse = await response.json();
+
+         if (data.status === 'success') {
+           const source: GarminApiActivity[] = data?.data?.recent_activities ?? [];
+
+           const runningActivities = source
+             .map((act, index) => {
+               const distanceM = act.distance_m ?? 0;
+               const durationSec = act.duration_sec ?? 0;
+               const dateIso = act.date ?? new Date(0).toISOString();
+
+               return {
+                 id: act._id ?? `${act.name}-${dateIso}-${distanceM}-${index}`,
+                 name: act.name,
+                 type: act.type,
+                 date: new Date(dateIso).toLocaleDateString('it-IT'),
+                 originalDate: dateIso,
+                 distance_km: (distanceM / 1000).toFixed(2),
+                 distance_formatted: formatDistance(distanceM),
+                 duration_sec: durationSec,
+                 duration_min: Math.round(durationSec / 60),
+                 duration_formatted: formatDurationFromSeconds(durationSec),
+                 calories_kcal: act.calories_kcal ?? 0,
+                 pace_min_per_km: act.pace_min_per_km ?? undefined,
+                 photo: act.photo ?? null,
+               };
+             });
+
+           if (!isActive) {
+             return;
+           }
+
+           // Se è un caricamento progressivo, concatena; altrimenti sostituisci
+           if (isLoadingMore) {
+             setActivities(prev => [...prev, ...runningActivities]);
+             // Se ne ha caricati meno di 100, significa che non ce ne sono altri
+             if (runningActivities.length < 100) {
+               setHasMoreToLoad(false);
+             }
+           } else {
+             setActivities(runningActivities);
+             // Se ne ha caricati meno di 100, significa che non ce ne sono altri
+             setHasMoreToLoad(runningActivities.length >= 100);
+           }
+
+           // global_summary: hero sempre sul totale running, indipendente dai filtri
+           const gs = data?.data?.global_summary ?? data?.data?.summary ?? null;
+           const fs = data?.data?.filtered_summary ?? data?.data?.summary ?? null;
+           if (gs) setGlobalSummary(gs);
+           setSummary(fs);
+           if (ENABLE_ACTIVITY_CACHE && isDefaultQuery && !isLoadingMore) {
+             setCachedActivities(runningActivities, 'running');
+           }
+           setError(null);
+           return;
+         }
+
+         throw new Error('Formato risposta API non valido.');
+       } catch (fetchError) {
+         if ((fetchError instanceof Error && fetchError.name === 'AbortError') || !isActive) {
+           return;
+         }
+
+         console.error('Error fetching activities:', fetchError);
+
+         if (cached && cached.length > 0 && !isLoadingMore) {
+           const normalizedCached = cached.map(normalizeRunningActivity);
+           setActivities(normalizedCached);
+           setSummary(null);
+           setError('Connessione instabile: sto mostrando dati recenti dalla cache.');
+         } else if (!isLoadingMore) {
+           setError('Impossibile caricare le attività. Controlla la connessione al database.');
+         }
+       } finally {
+         if (isActive) {
+           setLoading(false);
+           setLoadingMore(false);
+         }
+       }
+     };
+
+     void fetchActivities();
+
+     return () => {
+       isActive = false;
+       abortController.abort();
+     };
+   }, [requestQuery, isDefaultQuery, offset]);
 
    const activityGridItems = useMemo<CardGridItem[]>(
      () =>
@@ -451,7 +492,13 @@ export default function RunningPage() {
      : 'Lista aggiornata sui filtri applicati. Le statistiche qui sopra si riferiscono al totale Running.';
 
 
-   const selectedActivity = selectedActivityId ? activities.find((a) => a.id === selectedActivityId) : null;
+    const selectedActivity = selectedActivityId ? activities.find((a) => a.id === selectedActivityId) : null;
+
+    const handleLoadMore = () => {
+      if (hasMoreToLoad) {
+        setOffset((prev) => prev + 100);
+      }
+    };
 
     return (
       <PageShell background="sky" className="run-main-1" data-testid="run-main-1">
@@ -571,7 +618,7 @@ export default function RunningPage() {
                     {resultsLabel}
                   </p>
                 </div>
-                <Select value={sortBy} onValueChange={(value) => setSortBy(value as RunningSortValue)}>
+                <Select value={sortBy} onValueChange={(value) => handleSortChange(value as RunningSortValue)}>
                   <SelectTrigger
                     className="h-10 w-10 shrink-0 justify-center rounded-lg border border-slate-300 bg-white p-0 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 [&_svg.size-4]:hidden"
                     aria-label="Ordina attività"
@@ -604,35 +651,38 @@ export default function RunningPage() {
                 ))}
               </div>
             ) : (
-              <CardGrid
-                variant="activity"
-                title={isDesktop ? 'Attività recenti' : ''}
-                subtitle={isDesktop ? resultsLabel : ''}
-                items={activityGridItems}
-                columnsClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
-                sectionClassName="px-0 py-0 bg-transparent"
-                cardClassName="border-slate-300/80 bg-white dark:border-slate-500/90 dark:border-2 dark:bg-slate-950/40"
-                useMotion={false}
-                showDate
-                showTypeBadge={false}
-                sortOptions={isDesktop ? [...runningSortOptions] : undefined}
-                sortValue={sortBy}
-                onSortChange={isDesktop ? (value) => setSortBy(value as RunningSortValue) : undefined}
-                sortLabel="Ordina"
-                visibleItems={6}
-                showVisibilityToggle
-                showMoreLabel="Mostra altre attività"
-                showLessLabel="Mostra meno"
-                showMoreTone="current"
-                showLessTone="current"
-                visibilityToggleClassName="[&_button.cardgrid-show-less]:border [&_button.cardgrid-show-less]:border-slate-900 [&_button.cardgrid-show-less]:bg-white [&_button.cardgrid-show-less]:text-slate-900 [&_button.cardgrid-show-less]:hover:bg-slate-100 [&_button.cardgrid-show-less]:dark:border-slate-900 [&_button.cardgrid-show-less]:dark:bg-white [&_button.cardgrid-show-less]:dark:text-slate-900 [&_button.cardgrid-show-less]:dark:hover:bg-slate-100"
-                activityPhotoBadgePosition="border"
-                activityPhotoBadgeSize="medium"
-                activityPhotoBadgeRounded={false}
-                activityTextColor="black"
-                onItemClick={(item) => handleActivityClick(item.id)}
-                data-testid="run-activities-grid-4"
-              />
+               <CardGrid
+                 variant="activity"
+                 title={isDesktop ? 'Attività recenti' : ''}
+                 subtitle={isDesktop ? resultsLabel : ''}
+                 items={activityGridItems}
+                 columnsClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+                 sectionClassName="px-0 py-0 bg-transparent"
+                 cardClassName="border-slate-300/80 bg-white dark:border-slate-500/90 dark:border-2 dark:bg-slate-950/40"
+                 useMotion={false}
+                 showDate
+                 showTypeBadge={false}
+                 sortOptions={isDesktop ? [...runningSortOptions] : undefined}
+                 sortValue={sortBy}
+                 onSortChange={isDesktop ? (value) => handleSortChange(value as RunningSortValue) : undefined}
+                 sortLabel="Ordina"
+                 visibleItems={12}
+                 showVisibilityToggle
+                 showMoreLabel={loadingMore ? "Caricamento..." : "Mostra altre attività"}
+                 showLessLabel="Mostra meno"
+                 showMoreTone="current"
+                 showLessTone="current"
+                 visibilityToggleClassName="[&_button.cardgrid-show-less]:border [&_button.cardgrid-show-less]:border-slate-900 [&_button.cardgrid-show-less]:bg-white [&_button.cardgrid-show-less]:text-slate-900 [&_button.cardgrid-show-less]:hover:bg-slate-100 [&_button.cardgrid-show-less]:dark:border-slate-900 [&_button.cardgrid-show-less]:dark:bg-white [&_button.cardgrid-show-less]:dark:text-slate-900 [&_button.cardgrid-show-less]:dark:hover:bg-slate-100"
+                 activityPhotoBadgePosition="border"
+                 activityPhotoBadgeSize="medium"
+                 activityPhotoBadgeRounded={false}
+                 activityTextColor="black"
+                 onItemClick={(item) => handleActivityClick(item.id)}
+                 onLoadMore={handleLoadMore}
+                 isLoadingMore={loadingMore}
+                 paginationResetKey={paginationResetKey}
+                 data-testid="run-activities-grid-4"
+               />
             )}
             {!loading && activities.length === 0 && (
               <div className="mt-6 rounded-xl border border-slate-300/80 dark:border-slate-700 bg-sky-100/70 dark:bg-slate-900/80 p-8 text-center run-no-activities-4" data-testid="run-no-activities-4">

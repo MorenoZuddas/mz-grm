@@ -126,6 +126,9 @@ interface CardGridProps {
     flipCardCenterIncompleteRow?: boolean;
    // Card height variants
    cardHeight?: CardHeightVariant;
+   onLoadMore?: () => void;
+   isLoadingMore?: boolean;
+   paginationResetKey?: string;
 }
 
 const defaultItems: CardGridItem[] = [
@@ -506,6 +509,9 @@ export function CardGrid({
    flipCardColumns,
    flipCardCenterIncompleteRow = false,
    cardHeight = 'medium',
+   onLoadMore,
+   isLoadingMore = false,
+   paginationResetKey = 'default',
 }: CardGridProps) {
    const resolvedTitleColor = headerColor ?? (tone ?? titleColor);
    const resolvedSubtitleColor = headerColor ?? (tone ?? subtitleColor);
@@ -529,7 +535,7 @@ export function CardGrid({
    const flipCardGridClass = `grid grid-cols-1 md:grid-cols-12 ${flipCardGapClass}`;
 
   // Stato paginazione senza reset via effect (evita setState sincrono nell'effect).
-  const paginationKey = `${normalizedVisibleItems ?? 'all'}:${items.length}:${maxCards ?? 'none'}`;
+  const paginationKey = `${paginationResetKey}:${normalizedVisibleItems ?? 'all'}:${maxCards ?? 'none'}`;
   const [paginationState, setPaginationState] = useState<{ key: string; shownCount: number }>({
     key: '',
     shownCount: Infinity,
@@ -931,42 +937,48 @@ export function CardGrid({
           </div>
         )}
 
-        {shouldShowToggle ? (
-          <div className={`mt-8 flex justify-center gap-3 ${visibilityToggleClassName} cardgrid-toggle`} data-testid="cardgrid-toggle">
-            {hasMore && (
-              <Button
-                variant="default"
-                tone={showMoreTone}
-                onClick={() =>
-                  setPaginationState({
-                    key: paginationKey,
-                    shownCount: shownCount + (normalizedVisibleItems ?? 4),
-                  })
-                }
-                className="cardgrid-show-more"
-                data-testid="cardgrid-show-more"
-              >
-                {showMoreLabel}
-              </Button>
-            )}
-            {hasLess && (
-              <Button
-                variant="default"
-                tone={showLessTone}
-                onClick={() =>
-                  setPaginationState({
-                    key: paginationKey,
-                    shownCount: normalizedVisibleItems ?? 4,
-                  })
-                }
-                className="cardgrid-show-less"
-                data-testid="cardgrid-show-less"
-              >
-                {showLessLabel}
-              </Button>
-            )}
-          </div>
-        ) : null}
+         {shouldShowToggle ? (
+           <div className={`mt-8 flex justify-center gap-3 ${visibilityToggleClassName} cardgrid-toggle`} data-testid="cardgrid-toggle">
+             {hasMore && (
+               <Button
+                 variant="default"
+                 tone={showMoreTone}
+                 disabled={isLoadingMore}
+                 onClick={() => {
+                   const step = normalizedVisibleItems ?? 4;
+                   const nextShownCount = shownCount + step;
+                   setPaginationState({
+                     key: paginationKey,
+                     shownCount: nextShownCount,
+                   });
+                   if (onLoadMore && nextShownCount > items.length) {
+                     onLoadMore();
+                   }
+                 }}
+                 className="cardgrid-show-more"
+                 data-testid="cardgrid-show-more"
+               >
+                 {showMoreLabel}
+               </Button>
+             )}
+             {hasLess && (
+               <Button
+                 variant="default"
+                 tone={showLessTone}
+                 onClick={() =>
+                   setPaginationState({
+                     key: paginationKey,
+                     shownCount: normalizedVisibleItems ?? 4,
+                   })
+                 }
+                 className="cardgrid-show-less"
+                 data-testid="cardgrid-show-less"
+               >
+                 {showLessLabel}
+               </Button>
+             )}
+           </div>
+         ) : null}
       </div>
     </section>
   );
