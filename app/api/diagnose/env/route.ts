@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { requireAdminApiAccess } from '@/lib/api/admin';
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const denied = requireAdminApiAccess(request);
+  if (denied) return denied;
+
   // Questo endpoint mostra le variabili di ambiente configurate (SENZA i valori sensibili)
   const env = {
     MONGODB_URI: process.env.MONGODB_URI ? '***SET***' : 'NOT_SET',

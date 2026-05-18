@@ -20,12 +20,20 @@ export type FilterType =
 
 type FilterTone = 'current' | 'blue' | 'purple' | 'black';
 
+export interface FilterOption {
+  value: string;
+  label: string;
+  appliedLabel?: string;
+}
+
 export interface FilterConfig {
   type: FilterType;
   label: string;
   shortLabel?: string;
   placeholder?: string;
-  options?: Array<{ value: string; label: string }>;
+  options?: FilterOption[];
+  /** Unità mostrata nella chip attiva (es. 'km') */
+  unit?: string;
 }
 
 export interface FilterState {
@@ -44,6 +52,10 @@ interface FilterProps {
   className?: string;
   density?: 'default' | 'compact';
   variant?: 'default' | 'minimal';
+}
+
+function stripUnitSuffix(label: string): string {
+  return label.replace(/\s*\([^)]*\)\s*$/u, '').trim();
 }
 
 const filterTypeIcons: Record<FilterType, IconName> = {
@@ -105,9 +117,15 @@ export function Filter({
 }: FilterProps) {
   const style = toneStyles[tone];
   const dateInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const [filterState, setFilterState] = useState<FilterState>(
-    filters.reduce((acc, f) => ({ ...acc, [f.type]: '' }), {})
-  );
+  const buildEmptyState = () => filters.reduce((acc, f) => ({ ...acc, [f.type]: '' }), {} as FilterState);
+  const mergeFilterStates = (base: FilterState, draft: FilterState): FilterState =>
+    filters.reduce((acc, f) => {
+      const draftValue = draft[f.type] ?? '';
+      acc[f.type] = draftValue.trim() !== '' ? draftValue : (base[f.type] ?? '');
+      return acc;
+    }, {} as FilterState);
+  const [filterState, setFilterState] = useState<FilterState>(buildEmptyState);
+  const [appliedFilterState, setAppliedFilterState] = useState<FilterState>(buildEmptyState);
 
   const handleChange = (type: FilterType, value: string) => {
     const newState = { ...filterState, [type]: value };
@@ -115,15 +133,19 @@ export function Filter({
   };
 
   const handleApply = () => {
-    onFilterChange(filterState);
+    const mergedState = mergeFilterStates(appliedFilterState, filterState);
+    setAppliedFilterState(mergedState);
+    onFilterChange(mergedState);
+    setFilterState(buildEmptyState());
     if (syncChannel) {
-      window.dispatchEvent(new CustomEvent(`mz-filter:${syncChannel}`, { detail: filterState }));
+      window.dispatchEvent(new CustomEvent(`mz-filter:${syncChannel}`, { detail: mergedState }));
     }
   };
 
   const handleReset = () => {
-    const resetState = filters.reduce((acc, f) => ({ ...acc, [f.type]: '' }), {});
+    const resetState = buildEmptyState();
     setFilterState(resetState);
+    setAppliedFilterState(resetState);
     onReset?.();
     onFilterChange(resetState);
     if (syncChannel) {
@@ -132,25 +154,39 @@ export function Filter({
   };
 
   const hasActiveFilters = filters.some((f) => {
-    const val = filterState[f.type];
+    const val = appliedFilterState[f.type];
     return typeof val === 'string' && val.trim() !== '';
   });
 
   const activeFilters = filters
-    .map((f) => ({
-      type: f.type,
-      label: f.label,
-      value: filterState[f.type] || '',
-      display: f.options?.find((opt) => opt.value === filterState[f.type])?.label ?? filterState[f.type] ?? '',
-    }))
+    .map((f) => {
+      const rawValue = appliedFilterState[f.type] || '';
+      const matchedOption = f.options?.find((opt) => opt.value === rawValue);
+      const rawDisplay = matchedOption?.appliedLabel ?? matchedOption?.label ?? rawValue;
+      const chipBaseLabel = stripUnitSuffix(f.shortLabel || f.label);
+      const display = rawDisplay
+        ? f.type === 'distanceMin' || f.type === 'distanceMax'
+          ? `${chipBaseLabel} ${rawDisplay}${f.unit ? ` (${f.unit.toUpperCase()})` : ''}`
+          : f.unit
+            ? `${rawDisplay} ${f.unit}`
+            : rawDisplay
+        : '';
+      return {
+        type: f.type,
+        label: f.label,
+        value: rawValue,
+        display,
+      };
+    })
     .filter((f) => f.value.trim() !== '');
 
   const clearSingleFilter = (type: FilterType) => {
-    const next = { ...filterState, [type]: '' };
-    setFilterState(next);
-    onFilterChange(next);
+    const nextApplied = { ...appliedFilterState, [type]: '' };
+    setAppliedFilterState(nextApplied);
+    setFilterState((prev) => ({ ...prev, [type]: '' }));
+    onFilterChange(nextApplied);
     if (syncChannel) {
-      window.dispatchEvent(new CustomEvent(`mz-filter:${syncChannel}`, { detail: next }));
+      window.dispatchEvent(new CustomEvent(`mz-filter:${syncChannel}`, { detail: nextApplied }));
     }
   };
 
@@ -175,6 +211,8 @@ export function Filter({
       : '';
     const minimalIconClass = isMinimal ? 'text-[var(--color-comp-filter-minimal-icon)]' : style.icon;
     const resolvedFieldClass = isMinimal ? minimalFieldClass : style.field;
+    const neutralFocusWithinBg = 'focus-within:bg-slate-100 dark:focus-within:bg-slate-800';
+    const neutralOpenBg = 'focus:bg-slate-100 dark:focus:bg-slate-800 data-[state=open]:bg-slate-100 dark:data-[state=open]:bg-slate-800';
 
     if (config.type === 'dateStart' || config.type === 'dateEnd') {
       if (isMinimal) {
@@ -189,7 +227,7 @@ export function Filter({
                 dateInputRefs.current[config.type]?.showPicker?.();
               }
             }}
-            className={`${minimalControlWidth} inline-flex h-9 items-center justify-between gap-2 cursor-pointer ${minimalTextClass}`}
+            className={`${minimalControlWidth} inline-flex h-9 items-center justify-between gap-2 cursor-pointer rounded-md border border-[var(--color-comp-filter-minimal-border)] bg-[var(--color-comp-filter-minimal-bg)] px-2.5 transition-colors ${neutralFocusWithinBg} ${minimalTextClass}`}
             aria-label={`Apri calendario ${fieldLabel}`}
           >
             <IconComp className={`w-4 h-4 ${minimalIconClass}`} />
@@ -222,7 +260,7 @@ export function Filter({
               dateInputRefs.current[config.type]?.showPicker?.();
             }
           }}
-          className={`rounded-lg border ${fieldPadding} ${fieldHeight} flex items-center justify-between gap-2 cursor-pointer ${resolvedFieldClass}`}
+          className={`rounded-lg border ${fieldPadding} ${fieldHeight} flex items-center justify-between gap-2 cursor-pointer transition-colors ${neutralFocusWithinBg} ${resolvedFieldClass}`}
           aria-label={`Apri calendario ${fieldLabel}`}
         >
           <div className="flex items-center gap-2 min-w-0">
@@ -249,7 +287,7 @@ export function Filter({
       if (isMinimal) {
         return (
           <Select value={value} onValueChange={(v) => handleChange(config.type, v)} disabled={disabled}>
-            <SelectTrigger className={`h-9 ${minimalControlWidth} border-0 bg-transparent shadow-none px-0 py-0 text-xs font-semibold uppercase tracking-wide focus:ring-0 focus:ring-offset-0 data-[placeholder]:${minimalTextClass} [&_svg]:${minimalIconClass} ${minimalTextClass}`}>
+            <SelectTrigger className={`h-9 ${minimalControlWidth} rounded-md border border-[var(--color-comp-filter-minimal-border)] bg-[var(--color-comp-filter-minimal-bg)] px-2.5 py-0 shadow-none text-xs font-semibold uppercase tracking-wide transition-colors focus:ring-0 focus:ring-offset-0 ${neutralOpenBg} data-[placeholder]:${minimalTextClass} [&_svg]:${minimalIconClass} ${minimalTextClass}`}>
               <div className="flex items-center gap-2">
                 <IconComp className={`w-4 h-4 ${minimalIconClass}`} />
                 <SelectValue placeholder={fieldLabel} />
@@ -268,7 +306,7 @@ export function Filter({
 
       return (
         <Select value={value} onValueChange={(v) => handleChange(config.type, v)} disabled={disabled}>
-          <SelectTrigger className={`${fieldHeight} ${resolvedFieldClass} ${isMinimal ? minimalTextClass : style.text}`}>
+          <SelectTrigger className={`${fieldHeight} ${resolvedFieldClass} ${isMinimal ? minimalTextClass : style.text} transition-colors focus:ring-0 focus:ring-offset-0 ${neutralOpenBg}`}>
             <div className="flex items-center gap-2">
               <IconComp className={`${iconSize} ${minimalIconClass}`} />
               <SelectValue placeholder={fieldLabel} />
@@ -292,9 +330,13 @@ export function Filter({
           ? 'number'
           : 'text';
 
+    const isNumberInput = inputType === 'number';
+    const hasTypedValue = value.trim() !== '';
+    const showUnit = isNumberInput && hasTypedValue && Boolean(config.unit);
+
     return (
       isMinimal ? (
-        <div className={`${minimalControlWidth} inline-flex h-9 items-center gap-2 ${minimalTextClass}`}>
+        <div className={`${minimalControlWidth} inline-flex h-9 items-center gap-2 rounded-md border border-[var(--color-comp-filter-minimal-border)] bg-[var(--color-comp-filter-minimal-bg)] px-2.5 transition-colors focus-within:bg-slate-100 dark:focus-within:bg-slate-800 ${minimalTextClass}`}>
           <IconComp className={`w-4 h-4 shrink-0 ${minimalIconClass}`} />
           <Input
             type={inputType}
@@ -302,11 +344,14 @@ export function Filter({
             value={value}
             onChange={(e) => handleChange(config.type, e.target.value)}
             disabled={disabled}
-            className={`border-0 bg-transparent shadow-none px-0 h-auto w-full text-xs font-semibold uppercase tracking-wide ${minimalTextClass} ${minimalPlaceholderClass}`}
+            inputMode={isNumberInput ? 'decimal' : undefined}
+            step={isNumberInput ? 'any' : undefined}
+            className={`h-auto w-full border-0 bg-transparent px-0 shadow-none text-xs font-semibold tracking-wide focus-visible:ring-0 focus-visible:ring-offset-0 ${isNumberInput ? 'filter-number-input text-center tabular-nums [appearance:textfield] [-moz-appearance:textfield]' : 'uppercase'} ${minimalTextClass} ${minimalPlaceholderClass}`}
           />
+          {showUnit ? <span className={`text-[11px] font-semibold uppercase tracking-wide ${minimalTextClass}`}>{config.unit}</span> : null}
         </div>
       ) : (
-        <div className={`rounded-lg border ${fieldPadding} ${fieldHeight} flex items-center gap-2 ${resolvedFieldClass}`}>
+        <div className={`rounded-lg border ${fieldPadding} ${fieldHeight} flex items-center gap-2 transition-colors focus-within:bg-slate-100 dark:focus-within:bg-slate-800 ${resolvedFieldClass}`}>
           <IconComp className={`${iconSize} shrink-0 ${minimalIconClass}`} />
           <Input
             type={inputType}
@@ -314,8 +359,11 @@ export function Filter({
             value={value}
             onChange={(e) => handleChange(config.type, e.target.value)}
             disabled={disabled}
-            className={`border-0 bg-transparent shadow-none px-0 h-auto ${isMinimal ? minimalTextClass : style.text}`}
+            inputMode={isNumberInput ? 'decimal' : undefined}
+            step={isNumberInput ? 'any' : undefined}
+            className={`border-0 bg-transparent shadow-none px-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 ${isNumberInput ? 'filter-number-input text-center tabular-nums [appearance:textfield] [-moz-appearance:textfield]' : ''} ${isMinimal ? minimalTextClass : style.text}`}
           />
+          {showUnit ? <span className={`text-[11px] font-semibold uppercase tracking-wide ${isMinimal ? minimalTextClass : style.text}`}>{config.unit}</span> : null}
         </div>
       )
     );

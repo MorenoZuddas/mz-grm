@@ -1,12 +1,69 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { contactSchema } from '@/lib/contact/schema';
 import { sendContactNotification } from '@/lib/contact/email';
 import { connectToDatabase } from '@/lib/db/connection';
 import { ContactMessage } from '@/lib/db/models/ContactMessage';
 
-export async function POST(request: Request): Promise<NextResponse> {
+const CONTACT_RATE_LIMIT_WINDOW_MS = Number.parseInt(process.env.CONTACT_RATE_LIMIT_WINDOW_MS || '', 10) || 10 * 60 * 1000;
+const CONTACT_RATE_LIMIT_MAX = Number.parseInt(process.env.CONTACT_RATE_LIMIT_MAX || '', 10) || 5;
+
+type RateLimitBucket = {
+  count: number;
+  resetAt: number;
+};
+
+const contactRateLimitBuckets = new Map<string, RateLimitBucket>();
+
+function getClientIp(request: NextRequest): string {
+  const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  return forwardedFor || request.headers.get('x-real-ip')?.trim() || 'unknown';
+}
+
+function checkRateLimit(request: NextRequest): { limited: boolean; retryAfterSeconds: number } {
+  const ip = getClientIp(request);
+  const now = Date.now();
+  const bucket = contactRateLimitBuckets.get(ip);
+
+  if (!bucket || bucket.resetAt <= now) {
+    contactRateLimitBuckets.set(ip, { count: 1, resetAt: now + CONTACT_RATE_LIMIT_WINDOW_MS });
+    return { limited: false, retryAfterSeconds: Math.ceil(CONTACT_RATE_LIMIT_WINDOW_MS / 1000) };
+  }
+
+  bucket.count += 1;
+  contactRateLimitBuckets.set(ip, bucket);
+
+  if (bucket.count > CONTACT_RATE_LIMIT_MAX) {
+    return {
+      limited: true,
+      retryAfterSeconds: Math.max(1, Math.ceil((bucket.resetAt - now) / 1000)),
+    };
+  }
+
+  return {
+    limited: false,
+    retryAfterSeconds: Math.max(1, Math.ceil((bucket.resetAt - now) / 1000)),
+  };
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const rateLimit = checkRateLimit(request);
+    if (rateLimit.limited) {
+      return NextResponse.json(
+        {
+          status: 'error',
+          message: 'Troppe richieste. Riprova più tardi.',
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateLimit.retryAfterSeconds),
+          },
+        }
+      );
+    }
+
     const body = await request.json();
     const parsed = contactSchema.safeParse(body);
 

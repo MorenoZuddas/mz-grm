@@ -1,11 +1,16 @@
 import { connectToDatabase } from '@/lib/db/connection';
 import { Activity } from '@/lib/db/models/Activity';
 import { SyncLog } from '@/lib/db/models/SyncLog';
+import { requireAdminApiAccess } from '@/lib/api/admin';
 import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { expandGarminActivitiesFromDocuments, isGarminWrapperDocument, type GarminStoredDocument } from '@/lib/garmin/db';
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    const denied = requireAdminApiAccess(request);
+    if (denied) return denied;
+
     console.log('🧪 Test connessione database...');
 
     // 1. Connetti a MongoDB

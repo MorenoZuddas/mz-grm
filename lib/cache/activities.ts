@@ -1,6 +1,7 @@
 // Bump versione cache per invalidare dati locali non coerenti dopo cambio DB/ambiente.
-const CACHE_KEY = 'mz_activities_cache_v4';
-const CACHE_DURATION_MS = 5 * 60 * 1000;
+const CACHE_KEY = 'mz_activities_cache_v5';
+// 6 ore: i dati Garmin cambiamo al massimo una volta al giorno.
+const CACHE_DURATION_MS = 6 * 60 * 60 * 1000;
 
 type ActivityCacheType = 'running' | 'trekking';
 

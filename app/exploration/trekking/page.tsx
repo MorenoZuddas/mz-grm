@@ -1,5 +1,6 @@
 "use client";
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -26,6 +27,23 @@ interface GarminApiActivity {
   calories_kcal?: number | null;
   location?: string | null;
   photo?: ApiPhoto | null;
+}
+
+interface GarminSummary {
+  total_count?: number;
+  total_distance_m?: number;
+  longest_distance_m?: number;
+  locations_count?: number;
+}
+
+interface GarminApiResponse {
+  status?: string;
+  data?: {
+    recent_activities?: GarminApiActivity[];
+    summary?: GarminSummary;
+    global_summary?: GarminSummary;
+    filtered_summary?: GarminSummary;
+  };
 }
 
 interface Activity {
@@ -99,6 +117,9 @@ export default function TrekkingPage() {
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // summary = filtrato; globalSummary = totale trekking invariante (hero statico)
+  const [summary, setSummary] = useState<GarminSummary | null>(null);
+  const [globalSummary, setGlobalSummary] = useState<GarminSummary | null>(null);
 
   // Determina se desktop
   useEffect(() => {
@@ -135,12 +156,8 @@ export default function TrekkingPage() {
       }
 
       try {
-        const response = await fetch('/api/activities/garmin?group=trekking', {
-          cache: 'no-store',
+        const response = await fetch('/api/activities/garmin?group=trekking&limit=20&offset=0', {
           signal: abortController.signal,
-          headers: {
-            'cache-control': 'no-cache',
-          },
         });
         if (!response.ok) {
           const raw = await response.text();
@@ -148,7 +165,7 @@ export default function TrekkingPage() {
           throw new Error('Impossibile caricare le attività trekking in questo momento.');
         }
 
-        const data: { status?: string; data?: { recent_activities?: GarminApiActivity[] } } = await response.json();
+        const data: GarminApiResponse = await response.json();
         if (data.status === 'success') {
           const source: GarminApiActivity[] = data?.data?.recent_activities ?? [];
 
@@ -174,6 +191,10 @@ export default function TrekkingPage() {
           }
 
           setActivities(trekkingActivities);
+          const gs = data?.data?.global_summary ?? data?.data?.summary ?? null;
+          const fs = data?.data?.filtered_summary ?? data?.data?.summary ?? null;
+          if (gs) setGlobalSummary(gs);
+          setSummary(fs);
           setCachedActivities(trekkingActivities, 'trekking');
           setError(null);
           return;
@@ -189,6 +210,7 @@ export default function TrekkingPage() {
 
         if (cached && cached.length > 0) {
           setActivities(cached);
+          setSummary(null);
           setError('Connessione instabile: sto mostrando dati recenti dalla cache.');
         } else {
           setError('Impossibile caricare le attività trekking.');
@@ -209,23 +231,28 @@ export default function TrekkingPage() {
   }, []);
 
   const heroStats = useMemo(() => {
-    const totalKm = activities.reduce((sum, activity) => sum + Number.parseFloat(activity.distance_km), 0);
-    const longestKm = activities.length > 0
-      ? Math.max(...activities.map((activity) => Number.parseFloat(activity.distance_km)))
-      : 0;
+    // Usa sempre globalSummary (totale trekking, invariante ai filtri) per l'hero
+    const totalCount = typeof globalSummary?.total_count === 'number' ? globalSummary.total_count : activities.length;
+    const totalDistanceM = typeof globalSummary?.total_distance_m === 'number'
+      ? globalSummary.total_distance_m
+      : activities.reduce((sum, activity) => sum + Number.parseFloat(activity.distance_km) * 1000, 0);
+    const longestDistanceM = typeof globalSummary?.longest_distance_m === 'number'
+      ? globalSummary.longest_distance_m
+      : activities.reduce((max, activity) => Math.max(max, Number.parseFloat(activity.distance_km) * 1000), 0);
     const uniqueLocations = new Set(
       activities
         .map((activity) => activity.location?.trim())
         .filter((location): location is string => Boolean(location))
     );
+    const locationsCount = typeof globalSummary?.locations_count === 'number' ? globalSummary.locations_count : uniqueLocations.size;
 
     return {
-      count: activities.length,
-      totalKm: totalKm >= 1000 ? `${(totalKm / 1000).toFixed(1)}k km` : `${Math.round(totalKm)} km`,
-      longestKm: `${longestKm.toFixed(1)} km`,
-      locations: String(uniqueLocations.size),
+      count: totalCount,
+      totalKm: totalDistanceM >= 1_000_000 ? `${(totalDistanceM / 1_000_000).toFixed(1)}k km` : `${Math.round(totalDistanceM / 1000)} km`,
+      longestKm: `${(longestDistanceM / 1000).toFixed(1)} km`,
+      locations: String(locationsCount),
     };
-  }, [activities]);
+  }, [activities, globalSummary]);
 
   const activityGridItems = useMemo<CardGridItem[]>(
     () =>
@@ -242,23 +269,16 @@ export default function TrekkingPage() {
     [activities]
   );
 
-  if (loading) {
-    return (
-      <PageShell background="sky" className="flex items-center justify-center">
-        <p className="text-lg">Caricamento...</p>
-      </PageShell>
-    );
-  }
-
   return (
     <PageShell background="sky" className="trek-main-1" data-testid="trek-main-1">
       <section className="relative w-full h-[34vh] sm:h-[38vh] overflow-hidden trek-hero-2" data-testid="trek-hero-2">
-        <div
-          className="absolute inset-0 bg-cover bg-center scale-105 trek-hero-background-2"
-          style={{
-            backgroundImage:
-              'url(https://res.cloudinary.com/derbnvxif/image/upload/q_auto/f_auto/v1777450410/trekking_h2lev5.jpg)',
-          }}
+        <Image
+          src="https://res.cloudinary.com/derbnvxif/image/upload/q_auto/f_auto/v1777450410/trekking_h2lev5.jpg"
+          alt="Trekking hero"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center scale-105 trek-hero-background-2"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/15 trek-hero-overlay-2" />
 
@@ -290,10 +310,10 @@ export default function TrekkingPage() {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-px overflow-hidden rounded-xl border border-white/15 bg-white/10 backdrop-blur-md w-full max-w-sm sm:max-w-3xl mx-auto trek-stats-bar-2" data-testid="trek-stats-bar-2">
             {[
-              { label: 'Attività', mobileLabel: 'Attività', value: String(heroStats.count), testId: 'count', hideOnMobile: true },
-              { label: 'Tot. distanza', mobileLabel: 'Tot. distanza', value: heroStats.totalKm, testId: 'total-distance', hideOnMobile: true },
-              { label: 'Trekking più lungo', mobileLabel: 'Trekking più lungo', value: heroStats.longestKm, testId: 'longest', hideOnMobile: false },
-              { label: 'Località', mobileLabel: 'Località', value: heroStats.locations, testId: 'locations', hideOnMobile: false },
+              { label: 'Attività', mobileLabel: 'Attività', value: loading ? '…' : String(heroStats.count), testId: 'count', hideOnMobile: true },
+              { label: 'Tot. distanza', mobileLabel: 'Tot. distanza', value: loading ? '…' : heroStats.totalKm, testId: 'total-distance', hideOnMobile: true },
+              { label: 'Trekking più lungo', mobileLabel: 'Trekking più lungo', value: loading ? '…' : heroStats.longestKm, testId: 'longest', hideOnMobile: false },
+              { label: 'Località', mobileLabel: 'Località', value: loading ? '…' : heroStats.locations, testId: 'locations', hideOnMobile: false },
             ].map((stat) => (
               <div
                 key={stat.label}
@@ -321,33 +341,48 @@ export default function TrekkingPage() {
             </div>
           )}
 
-          <CardGrid
-            variant="activity"
-            title="Attività recenti"
-            subtitle={`${activities.length} attività`}
-            items={activityGridItems}
-            columnsClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
-            sectionClassName="px-0 py-0 bg-transparent"
-            cardClassName="border-slate-300/80 bg-white dark:border-slate-500/90 dark:border-2 dark:bg-slate-950/40"
-            useMotion={false}
-            showDate
-            showTypeBadge={false}
-            visibleItems={8}
-            showVisibilityToggle
-            showMoreLabel="Mostra altre attività"
-            showLessLabel="Mostra meno"
-            showMoreTone="current"
-            showLessTone="current"
-            visibilityToggleClassName="[&_button.cardgrid-show-less]:border [&_button.cardgrid-show-less]:border-slate-900 [&_button.cardgrid-show-less]:bg-white [&_button.cardgrid-show-less]:text-slate-900 [&_button.cardgrid-show-less]:hover:bg-slate-100 [&_button.cardgrid-show-less]:dark:border-slate-900 [&_button.cardgrid-show-less]:dark:bg-white [&_button.cardgrid-show-less]:dark:text-slate-900 [&_button.cardgrid-show-less]:dark:hover:bg-slate-100"
-            activityPhotoBadgePosition="border"
-            activityPhotoBadgeSize="medium"
-            activityPhotoBadgeRounded={false}
-            activityTextColor="black"
-            onItemClick={(item) => handleActivityClick(item.id)}
-            data-testid="trek-activities-grid-3"
-          />
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="trek-activities-skeleton-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={`trek-skeleton-${index}`} className="rounded-xl border border-slate-300/80 bg-white p-4 dark:border-slate-500/90 dark:border-2 dark:bg-slate-950/40">
+                  <div className="animate-pulse space-y-3">
+                    <div className="h-36 rounded-lg bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-3 w-1/2 rounded bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-3 w-2/3 rounded bg-slate-200 dark:bg-slate-800" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <CardGrid
+              variant="activity"
+              title="Attività recenti"
+              subtitle={`${typeof summary?.total_count === 'number' ? summary.total_count : activities.length} attività`}
+              items={activityGridItems}
+              columnsClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+              sectionClassName="px-0 py-0 bg-transparent"
+              cardClassName="border-slate-300/80 bg-white dark:border-slate-500/90 dark:border-2 dark:bg-slate-950/40"
+              useMotion={false}
+              showDate
+              showTypeBadge={false}
+              visibleItems={8}
+              showVisibilityToggle
+              showMoreLabel="Mostra altre attività"
+              showLessLabel="Mostra meno"
+              showMoreTone="current"
+              showLessTone="current"
+              visibilityToggleClassName="[&_button.cardgrid-show-less]:border [&_button.cardgrid-show-less]:border-slate-900 [&_button.cardgrid-show-less]:bg-white [&_button.cardgrid-show-less]:text-slate-900 [&_button.cardgrid-show-less]:hover:bg-slate-100 [&_button.cardgrid-show-less]:dark:border-slate-900 [&_button.cardgrid-show-less]:dark:bg-white [&_button.cardgrid-show-less]:dark:text-slate-900 [&_button.cardgrid-show-less]:dark:hover:bg-slate-100"
+              activityPhotoBadgePosition="border"
+              activityPhotoBadgeSize="medium"
+              activityPhotoBadgeRounded={false}
+              activityTextColor="black"
+              onItemClick={(item) => handleActivityClick(item.id)}
+              data-testid="trek-activities-grid-3"
+            />
+          )}
 
-          {activities.length === 0 && (
+          {!loading && activities.length === 0 && (
             <div className="mt-6 rounded-xl border border-slate-300/80 dark:border-slate-700 bg-sky-100/70 dark:bg-slate-900/80 p-8 text-center trek-empty-state-3" data-testid="trek-empty-state-3">
               <p className="font-semibold text-slate-700 dark:text-slate-200">Nessuna attività trekking trovata</p>
             </div>

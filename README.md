@@ -21,6 +21,27 @@ npm run dev
 
 App: `http://localhost:3000`
 
+## Stabilità IntelliJ / OneDrive
+
+Se il progetto viene aperto in IntelliJ dentro una cartella OneDrive, l'indicizzazione può ripartire spesso. Per ridurre il problema:
+
+1. Se possibile, sposta il repo fuori da OneDrive, ad esempio in `~/dev/mz-exploration`.
+2. In IntelliJ marca come **Excluded** queste cartelle:
+   - `.next`
+   - `node_modules`
+   - `out`
+   - `coverage`
+   - `.turbo`
+   - `.turbopack`
+3. Se resti su OneDrive, imposta la cartella del progetto su **Always keep on this device**.
+4. Evita di tenere attiva la sincronizzazione mentre lavori su build molto volatili.
+
+Verifica rapida da terminale:
+
+```bash
+git check-ignore -v .next node_modules .idea/workspace.xml
+```
+
 ## Script
 
 ```bash

@@ -7,10 +7,15 @@ import {
   sortExpandedGarminActivities,
   type GarminStoredDocument,
 } from '@/lib/garmin/db';
+import { requireAdminApiAccess } from '@/lib/api/admin';
 import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    const denied = requireAdminApiAccess(request);
+    if (denied) return denied;
+
     console.log('📊 Status check...');
 
     await connectToDatabase();

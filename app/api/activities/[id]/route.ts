@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Types } from 'mongoose';
 import { connectToDatabase } from '@/lib/db/connection';
 import { Activity } from '@/lib/db/models/Activity';
 import { type GarminRawActivity } from '@/lib/garmin/converter';
 import { getAssetsByActivityIds } from '@/lib/cloudinary/server';
 import {
-  expandGarminActivitiesFromDocument,
   expandGarminActivitiesFromDocuments,
   type ExpandedGarminActivity,
   type GarminStoredDocument,
@@ -90,6 +88,30 @@ function normalizePhotosFromDb(rawActivity: GarminRawActivity): NormalizedPhoto[
   return Array.from(unique.values());
 }
 
+async function findCandidateActivityDocs(id: string): Promise<GarminStoredDocument[]> {
+  if (/^[0-9a-fA-F]{24}$/.test(id)) {
+    const directDoc = (await Activity.findById(id).lean()) as GarminStoredDocument | null;
+    if (directDoc) {
+      return [directDoc];
+    }
+  }
+
+  const queries: Array<Record<string, unknown>> = [{ source_id: id }];
+  const numericId = Number(id);
+  if (Number.isFinite(numericId)) {
+    queries.push({ activityId: numericId });
+  }
+
+  for (const query of queries) {
+    const docs = (await Activity.find(query).lean()) as GarminStoredDocument[];
+    if (docs.length > 0) {
+      return docs;
+    }
+  }
+
+  return [];
+}
+
 export async function GET(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   try {
     const { id: idFromParams } = await context.params;
@@ -107,12 +129,15 @@ export async function GET(request: NextRequest, context: RouteContext): Promise<
 
     let selectedEntry: ExpandedGarminActivity | null = null;
 
-    if (Types.ObjectId.isValid(id)) {
-      const directDoc = (await Activity.findById(id).lean()) as GarminStoredDocument | null;
-      if (directDoc) {
-        const expandedDirect = expandGarminActivitiesFromDocument(directDoc);
-        selectedEntry = expandedDirect.find((entry) => entry.entryId === id) ?? expandedDirect[0] ?? null;
-      }
+    const candidateDocs = await findCandidateActivityDocs(id);
+    if (candidateDocs.length > 0) {
+      const expandedCandidateActivities = expandGarminActivitiesFromDocuments(candidateDocs);
+      const numericId = Number(id);
+      selectedEntry = expandedCandidateActivities.find((entry) => {
+        if (entry.entryId === id) return true;
+        if (entry.containerId === id) return true;
+        return Number.isFinite(numericId) && entry.numericActivityId === numericId;
+      }) ?? expandedCandidateActivities[0] ?? null;
     }
 
     if (!selectedEntry) {

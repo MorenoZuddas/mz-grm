@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/db/connection';
 import { Activity } from '@/lib/db/models/Activity';
 import { type GarminStoredDocument } from '@/lib/garmin/db';
 import { migrateGarminWrapperDocuments } from '@/lib/garmin/migrate';
+import { requireAdminApiAccess } from '@/lib/api/admin';
 
 interface MigrateWrapperBody {
   apply?: boolean;
@@ -10,27 +11,10 @@ interface MigrateWrapperBody {
   deleteSourceDocuments?: boolean;
 }
 
-function isAuthorized(request: NextRequest): boolean {
-  const configuredSecret = process.env.MIGRATION_API_SECRET?.trim();
-  if (!configuredSecret) {
-    return true;
-  }
-
-  const headerSecret = request.headers.get('x-migration-secret')?.trim();
-  return headerSecret === configuredSecret;
-}
-
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    if (!isAuthorized(request)) {
-      return NextResponse.json(
-        {
-          status: 'error',
-          message: 'Non autorizzato. Imposta l\'header x-migration-secret corretto.',
-        },
-        { status: 401 }
-      );
-    }
+    const denied = requireAdminApiAccess(request);
+    if (denied) return denied;
 
     await connectToDatabase();
 

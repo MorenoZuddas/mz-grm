@@ -1,6 +1,8 @@
 import { connectToDatabase } from '@/lib/db/connection';
 import { Activity } from '@/lib/db/models/Activity';
+import { requireAdminApiAccess } from '@/lib/api/admin';
 import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { expandGarminActivitiesFromDocuments, isGarminWrapperDocument, type GarminStoredDocument } from '@/lib/garmin/db';
 
 interface MongoServerInfo {
@@ -8,8 +10,11 @@ interface MongoServerInfo {
   ok?: number;
 }
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    const denied = requireAdminApiAccess(request);
+    if (denied) return denied;
+
     console.log('🔍 Diagnosi database in corso...');
 
     const conn = await connectToDatabase();

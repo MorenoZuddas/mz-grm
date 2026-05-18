@@ -1,6 +1,7 @@
 import { connectToDatabase } from '@/lib/db/connection';
 import { Activity } from '@/lib/db/models/Activity';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminApiAccess } from '@/lib/api/admin';
 
 interface SyncIndexesBody {
   apply?: boolean;
@@ -29,6 +30,9 @@ async function dropLegacyIndexes(): Promise<string[]> {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const denied = requireAdminApiAccess(request);
+    if (denied) return denied;
+
     await connectToDatabase();
 
     const body = (await request.json().catch(() => ({}))) as SyncIndexesBody;

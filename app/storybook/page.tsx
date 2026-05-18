@@ -28,7 +28,7 @@ import type { ApiPhoto } from "@/components/Modal"
 import { BadgeChip, type BadgeChipType } from "@/components/BadgeChip"
 import { ActivityPhotos } from "@/components/ActivityPhotos"
 import { ActivityClickHandler } from "@/components/ActivityClickWrapper"
-import { Filter, type FilterConfig, type FilterType } from "@/components/Filter"
+import { Filter, type FilterConfig, type FilterOption, type FilterType } from "@/components/Filter"
 import { Statistics, type StatisticsMetricKey } from "@/components/Statistics"
 import { AnimatedSection, CardGrid, Divider, Hero, PageShell, Text, type CardGridItem } from "@/components/generic"
 import { Stripe } from "@/components/Stripe"
@@ -1807,7 +1807,7 @@ function FilterSection() {
   const [tone, setTone] = useState<Tone>("current")
   const [demoState, setDemoState] = useState<{ [key: string]: string }>({})
 
-  const availableFilters: Array<{ type: FilterType; label: string; placeholder?: string; options?: Array<{ value: string; label: string }> }> = [
+  const availableFilters: Array<{ type: FilterType; label: string; placeholder?: string; options?: FilterOption[] }> = [
     {
       type: "dateStart",
       label: "Data inizio",
@@ -1822,9 +1822,9 @@ function FilterSection() {
       type: "activityType",
       label: "Tipo attività",
       options: [
-        { value: "running", label: "Running" },
-        { value: "trekking", label: "Trekking" },
-        { value: "trip", label: "Trip" },
+        { value: "running", label: "Running", appliedLabel: "Attività running" },
+        { value: "trekking", label: "Trekking", appliedLabel: "Attività trekking" },
+        { value: "trip", label: "Trip", appliedLabel: "Attività trip" },
       ],
     },
     {
@@ -1920,7 +1920,7 @@ function FilterSection() {
             { prop: "onReset", values: ["() => void"] },
             { prop: "FilterType", values: [...FILTER_TYPES] },
             { prop: "FilterConfig.type", values: [...FILTER_TYPES] },
-            { prop: "FilterConfig.options (optional)", values: ["Array<{value, label}>"] },
+            { prop: "FilterConfig.options (optional)", values: ["Array<{value, label, appliedLabel?}>"] },
           ]}
         />
       </div>

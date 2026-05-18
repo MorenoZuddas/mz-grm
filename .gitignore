@@ -16,6 +16,12 @@
 # next.js
 /.next/
 /out/
+/.turbo/
+/.turbopack/
+
+# local caches
+/.cache/
+.eslintcache
 
 # production
 /build
@@ -35,6 +41,9 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# jetbrains (config locale macchina)
+.idea/
 
 # typescript
 *.tsbuildinfo

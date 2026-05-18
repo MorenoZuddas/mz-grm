@@ -1,5 +1,7 @@
 import nodemailer from 'nodemailer';
+import { requireAdminApiAccess } from '@/lib/api/admin';
 import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 
 function parsePort(): number {
   const raw = Number.parseInt(process.env.EMAIL_PORT || '587', 10);
@@ -16,7 +18,10 @@ function missingFields(): string[] {
   return fields;
 }
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const denied = requireAdminApiAccess(request);
+  if (denied) return denied;
+
   if (process.env.NOTIFY_EMAIL === 'false') {
     return NextResponse.json({
       status: 'disabled',

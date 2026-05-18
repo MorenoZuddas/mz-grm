@@ -1,5 +1,6 @@
 "use client";
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -28,6 +29,23 @@ interface GarminApiActivity {
   calories_kcal?: number | null;
   pace_min_per_km?: number | null;
   photo?: ApiPhoto | null;
+}
+
+interface GarminSummary {
+  total_count?: number;
+  total_distance_m?: number;
+  longest_distance_m?: number;
+  best_half_marathon_sec?: number | null;
+}
+
+interface GarminApiResponse {
+  status?: string;
+  data?: {
+    recent_activities?: GarminApiActivity[];
+    summary?: GarminSummary;
+    global_summary?: GarminSummary;
+    filtered_summary?: GarminSummary;
+  };
 }
 
 interface Activity {
@@ -97,16 +115,6 @@ const relatedExplorationCards: CardGridItem[] = [
   },
 ];
 
-function safeTimestamp(value: string | null | undefined): number {
-  if (!value) return 0;
-  const ts = new Date(value).getTime();
-  return Number.isNaN(ts) ? 0 : ts;
-}
-
-function normalizeType(type: string | undefined): string {
-  return (type || '').trim().toLowerCase();
-}
-
 function formatDurationFromSeconds(durationSec: number): string {
   const total = Math.max(0, Math.floor(durationSec));
   const hours = Math.floor(total / 3600);
@@ -126,6 +134,18 @@ function formatDistance(distanceM: number): string {
   return `${km.toFixed(2)} km`;
 }
 
+function toStartOfDay(value: string): Date {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function toEndOfDay(value: string): Date {
+  const date = new Date(value);
+  date.setHours(23, 59, 59, 999);
+  return date;
+}
+
 export default function RunningPage() {
   const router = useRouter();
    const [activities, setActivities] = useState<Activity[]>([]);
@@ -141,6 +161,35 @@ export default function RunningPage() {
   });
   const [sortBy, setSortBy] = useState<RunningSortValue>('date_desc');
   const [error, setError] = useState<string | null>(null);
+  // summary = filtrato (cambia con i filtri); globalSummary = sempre totale running (hero statico)
+  const [summary, setSummary] = useState<GarminSummary | null>(null);
+  const [globalSummary, setGlobalSummary] = useState<GarminSummary | null>(null);
+
+  const isDefaultQuery =
+    !filters.dateFrom &&
+    !filters.dateTo &&
+    filters.types.length === 0 &&
+    typeof filters.minDistance !== 'number' &&
+    typeof filters.maxDistance !== 'number' &&
+    sortBy === 'date_desc';
+
+  const requestQuery = useMemo(() => {
+    const params = new URLSearchParams({
+      group: 'running',
+      limit: '20',
+      offset: '0',
+      sort: sortBy,
+      include_photos: '0',
+    });
+
+    if (filters.dateFrom) params.set('date_from', filters.dateFrom.toISOString());
+    if (filters.dateTo) params.set('date_to', filters.dateTo.toISOString());
+    if (filters.types.length > 0) params.set('types', filters.types.join(','));
+    if (typeof filters.minDistance === 'number') params.set('min_distance_m', String(Math.round(filters.minDistance)));
+    if (typeof filters.maxDistance === 'number') params.set('max_distance_m', String(Math.round(filters.maxDistance)));
+
+    return params.toString();
+  }, [filters, sortBy]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 1024px)');
@@ -189,8 +238,8 @@ export default function RunningPage() {
       label: 'Tipo attività',
       shortLabel: 'Tipo attività',
       options: [
-        { value: 'running', label: 'Corsa su strada' },
-        { value: 'track_running', label: 'Corsa su pista' },
+        { value: 'running', label: 'Strada', appliedLabel: 'Corsa su strada' },
+        { value: 'track_running', label: 'Pista', appliedLabel: 'Corsa su pista' },
       ],
     },
     {
@@ -198,19 +247,21 @@ export default function RunningPage() {
       label: 'Distanza min (km)',
       shortLabel: 'Dist. min (km)',
       placeholder: 'Distanza min (km)',
+      unit: 'km',
     },
     {
       type: 'distanceMax',
       label: 'Distanza max (km)',
       shortLabel: 'Dist. max (km)',
       placeholder: 'Distanza max (km)',
+      unit: 'km',
     },
   ];
 
   const handleFilterChange = (state: FilterState) => {
     setFilters({
-      dateFrom: state.dateStart ? new Date(state.dateStart) : undefined,
-      dateTo: state.dateEnd ? new Date(state.dateEnd) : undefined,
+      dateFrom: state.dateStart ? toStartOfDay(state.dateStart) : undefined,
+      dateTo: state.dateEnd ? toEndOfDay(state.dateEnd) : undefined,
       types: state.activityType ? [state.activityType] : [],
       minDistance: state.distanceMin ? Number.parseFloat(state.distanceMin) * 1000 : undefined,
       maxDistance: state.distanceMax ? Number.parseFloat(state.distanceMax) * 1000 : undefined,
@@ -226,7 +277,11 @@ export default function RunningPage() {
     let isActive = true;
 
     const fetchActivities = async () => {
-      const cached = ENABLE_ACTIVITY_CACHE ? getCachedActivities<CachedActivity[]>('running') : null;
+      const cached = ENABLE_ACTIVITY_CACHE && isDefaultQuery ? getCachedActivities<CachedActivity[]>('running') : null;
+
+      if (isActive) {
+        setLoading(true);
+      }
 
       if (cached && cached.length > 0) {
         const normalizedCached = cached.map(normalizeRunningActivity);
@@ -237,12 +292,8 @@ export default function RunningPage() {
       }
 
       try {
-        const response = await fetch('/api/activities/garmin?group=running', {
-          cache: 'no-store',
+        const response = await fetch(`/api/activities/garmin?${requestQuery}`, {
           signal: abortController.signal,
-          headers: {
-            'cache-control': 'no-cache',
-          },
         });
         if (!response.ok) {
           const raw = await response.text();
@@ -250,7 +301,7 @@ export default function RunningPage() {
           throw new Error('Impossibile caricare le attività in questo momento.');
         }
 
-        const data: { status?: string; data?: { recent_activities?: GarminApiActivity[] } } = await response.json();
+        const data: GarminApiResponse = await response.json();
 
         if (data.status === 'success') {
           const source: GarminApiActivity[] = data?.data?.recent_activities ?? [];
@@ -276,15 +327,19 @@ export default function RunningPage() {
                 pace_min_per_km: act.pace_min_per_km ?? undefined,
                 photo: act.photo ?? null,
               };
-            })
-            .sort((a, b) => safeTimestamp(b.originalDate) - safeTimestamp(a.originalDate));
+            });
 
           if (!isActive) {
             return;
           }
 
           setActivities(runningActivities);
-          if (ENABLE_ACTIVITY_CACHE) {
+          // global_summary: hero sempre sul totale running, indipendente dai filtri
+          const gs = data?.data?.global_summary ?? data?.data?.summary ?? null;
+          const fs = data?.data?.filtered_summary ?? data?.data?.summary ?? null;
+          if (gs) setGlobalSummary(gs);
+          setSummary(fs);
+          if (ENABLE_ACTIVITY_CACHE && isDefaultQuery) {
             setCachedActivities(runningActivities, 'running');
           }
           setError(null);
@@ -302,6 +357,7 @@ export default function RunningPage() {
         if (cached && cached.length > 0) {
           const normalizedCached = cached.map(normalizeRunningActivity);
           setActivities(normalizedCached);
+          setSummary(null);
           setError('Connessione instabile: sto mostrando dati recenti dalla cache.');
         } else {
           setError('Impossibile caricare le attività. Controlla la connessione al database.');
@@ -319,52 +375,11 @@ export default function RunningPage() {
       isActive = false;
       abortController.abort();
     };
-  }, []);
-
-  const filteredActivities = useMemo(() => {
-    const filtered = activities.filter((activity) => {
-      const dateTs = safeTimestamp(activity.originalDate);
-      const distanceMeters = Number.parseFloat(activity.distance_km) * 1000;
-      const type = normalizeType(activity.type);
-
-      if (filters.dateFrom) {
-        const from = filters.dateFrom.getTime();
-        if (dateTs < from) return false;
-      }
-
-      if (filters.dateTo) {
-        const to = filters.dateTo.getTime();
-        if (dateTs > to) return false;
-      }
-
-      if (typeof filters.minDistance === 'number' && distanceMeters < filters.minDistance) return false;
-      if (typeof filters.maxDistance === 'number' && distanceMeters > filters.maxDistance) return false;
-
-      if (filters.types.length > 0) {
-        const allowed = filters.types.map((t) => normalizeType(t));
-        if (!allowed.includes(type)) return false;
-      }
-
-      return true;
-    });
-
-    switch (sortBy) {
-      case 'date_asc':
-        return [...filtered].sort((a, b) => safeTimestamp(a.originalDate) - safeTimestamp(b.originalDate));
-      case 'date_desc':
-        return [...filtered].sort((a, b) => safeTimestamp(b.originalDate) - safeTimestamp(a.originalDate));
-      case 'distance_asc':
-        return [...filtered].sort((a, b) => parseFloat(a.distance_km) - parseFloat(b.distance_km));
-      case 'distance_desc':
-        return [...filtered].sort((a, b) => parseFloat(b.distance_km) - parseFloat(a.distance_km));
-      default:
-        return filtered;
-    }
-   }, [activities, filters, sortBy]);
+  }, [requestQuery, isDefaultQuery]);
 
    const activityGridItems = useMemo<CardGridItem[]>(
      () =>
-       filteredActivities.map((activity) => ({
+       activities.map((activity) => ({
          id: activity.id,
          title: activity.name,
          href: `/exploration/running/${activity.id}`,
@@ -376,69 +391,79 @@ export default function RunningPage() {
          pace: `${formatPace(activity.pace_min_per_km)} min/km`,
          kcal: `${activity.calories_kcal || '—'}`,
        })),
-     [filteredActivities]
+     [activities]
    );
 
-   // Statistiche calcolate per l'hero (su tutte le attività, non filtrate)
-   const heroStats = useMemo(() => {
-     const totalKm = activities.reduce((sum, a) => sum + parseFloat(a.distance_km), 0);
-     const longestKm = activities.length > 0
-       ? Math.max(...activities.map(a => parseFloat(a.distance_km)))
-       : 0;
+    const heroStats = useMemo(() => {
+      // Usa sempre globalSummary (totale running, invariante ai filtri) per l'hero
+      const totalCount = typeof globalSummary?.total_count === 'number' ? globalSummary.total_count : activities.length;
+      const totalDistanceM = typeof globalSummary?.total_distance_m === 'number'
+        ? globalSummary.total_distance_m
+        : activities.reduce((sum, a) => sum + parseFloat(a.distance_km) * 1000, 0);
+      const longestDistanceM = typeof globalSummary?.longest_distance_m === 'number'
+        ? globalSummary.longest_distance_m
+        : activities.reduce((max, a) => Math.max(max, parseFloat(a.distance_km) * 1000), 0);
+      const summaryHalf = typeof globalSummary?.best_half_marathon_sec === 'number' ? globalSummary.best_half_marathon_sec : null;
+
      // Record mezza maratona: miglior tempo su attività ~21.1 km (tolleranza +/- 0.5 km)
      const halfMarathonCandidates = activities.filter((a) => {
        const km = parseFloat(a.distance_km);
        const durationSec = typeof a.duration_sec === 'number' && a.duration_sec > 0
          ? a.duration_sec
-         : Math.max(0, Math.round(a.duration_min * 60));
+         : Math.max(0, Math.round(a.duration_min ?? 0) * 60);
        return Number.isFinite(km) && km >= 20.6 && km <= 21.6 && durationSec > 0;
      });
      const bestHalf = halfMarathonCandidates.length > 0
        ? [...halfMarathonCandidates].sort((a, b) => {
-           const aSec = typeof a.duration_sec === 'number' && a.duration_sec > 0 ? a.duration_sec : Math.round(a.duration_min * 60);
-           const bSec = typeof b.duration_sec === 'number' && b.duration_sec > 0 ? b.duration_sec : Math.round(b.duration_min * 60);
+           const aSec = typeof a.duration_sec === 'number' && a.duration_sec > 0 ? a.duration_sec : Math.round((a.duration_min ?? 0) * 60);
+           const bSec = typeof b.duration_sec === 'number' && b.duration_sec > 0 ? b.duration_sec : Math.round((b.duration_min ?? 0) * 60);
            return aSec - bSec;
          })[0]
        : null;
 
      return {
-       count: activities.length,
-       totalKm: totalKm >= 1000
-         ? `${(totalKm / 1000).toFixed(1)}k km`
-         : `${Math.round(totalKm)} km`,
-       longestKm: `${longestKm.toFixed(1)} km`,
-       halfMarathonRecord: bestHalf
+        count: totalCount,
+        totalKm: totalDistanceM >= 1_000_000
+          ? `${(totalDistanceM / 1_000_000).toFixed(1)}k km`
+          : `${Math.round(totalDistanceM / 1000)} km`,
+        longestKm: `${(longestDistanceM / 1000).toFixed(1)} km`,
+        halfMarathonRecord: summaryHalf
+          ? formatDurationFromSeconds(summaryHalf)
+          : bestHalf
          ? formatDurationFromSeconds(
              typeof bestHalf.duration_sec === 'number' && bestHalf.duration_sec > 0
                ? bestHalf.duration_sec
-               : Math.round(bestHalf.duration_min * 60)
+               : Math.round((bestHalf.duration_min ?? 0) * 60)
            )
          : 'N/D',
      };
-   }, [activities]);
+   }, [activities, globalSummary]);
+
+   // Conteggio risultati filtrati (indipendente dal count hero)
+   const filteredCount = typeof summary?.total_count === 'number' ? summary.total_count : activities.length;
+
+   const resultsLabel = loading
+     ? (isDefaultQuery ? 'Caricamento attività...' : 'Aggiornamento risultati filtrati...')
+     : `${filteredCount} ${isDefaultQuery ? 'attività' : 'risultati filtrati'}`;
+
+   const heroDescription = isDefaultQuery
+     ? 'Corse su strada, pista e allenamenti — progressi, numeri ed emozioni.'
+     : 'Lista aggiornata sui filtri applicati. Le statistiche qui sopra si riferiscono al totale Running.';
 
 
    const selectedActivity = selectedActivityId ? activities.find((a) => a.id === selectedActivityId) : null;
-
-  if (loading) {
-    return (
-      <PageShell background="sky" className="flex items-center justify-center">
-        <p className="text-lg">Caricamento...</p>
-      </PageShell>
-    );
-  }
 
     return (
       <PageShell background="sky" className="run-main-1" data-testid="run-main-1">
         {/* ─── Hero con statistiche integrate ─── */}
         <section className="relative w-full h-[34vh] sm:h-[38vh] overflow-hidden run-hero-2" data-testid="run-hero-2">
-          {/* Background image */}
-          <div
-            className="absolute inset-0 bg-cover bg-center scale-105 run-hero-background-2"
-            style={{
-              backgroundImage:
-                'url(https://res.cloudinary.com/derbnvxif/image/upload/q_auto/f_auto/v1777450410/running_Large_zorzw2.jpg)',
-            }}
+          <Image
+            src="https://res.cloudinary.com/derbnvxif/image/upload/q_auto/f_auto/v1777450410/running_Large_zorzw2.jpg"
+            alt="Running hero"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-center scale-105 run-hero-background-2"
           />
           {/* Gradient: forte in basso per leggere sia testo che stats */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/15 run-hero-overlay-2" />
@@ -481,7 +506,7 @@ export default function RunningPage() {
                 Running
               </h1>
               <p className="text-sm sm:text-base text-white/85 max-w-xl mx-auto run-subtitle-2" data-testid="run-subtitle-2">
-                Corse su strada, pista e allenamenti — progressi, numeri ed emozioni.
+                {heroDescription}
               </p>
             </div>
 
@@ -542,7 +567,9 @@ export default function RunningPage() {
               <div className="mb-4 flex items-start justify-between gap-4" data-testid="run-mobile-header-sort-4">
                 <div>
                   <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white leading-none">Attività recenti</h2>
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{filteredActivities.length} attività</p>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                    {resultsLabel}
+                  </p>
                 </div>
                 <Select value={sortBy} onValueChange={(value) => setSortBy(value as RunningSortValue)}>
                   <SelectTrigger
@@ -563,36 +590,51 @@ export default function RunningPage() {
               </div>
             )}
 
-            <CardGrid
-              variant="activity"
-              title={isDesktop ? 'Attività recenti' : ''}
-              subtitle={isDesktop ? `${filteredActivities.length} attività` : ''}
-              items={activityGridItems}
-              columnsClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
-              sectionClassName="px-0 py-0 bg-transparent"
-              cardClassName="border-slate-300/80 bg-white dark:border-slate-500/90 dark:border-2 dark:bg-slate-950/40"
-              useMotion={false}
-              showDate
-              showTypeBadge={false}
-              sortOptions={isDesktop ? [...runningSortOptions] : undefined}
-              sortValue={sortBy}
-              onSortChange={isDesktop ? (value) => setSortBy(value as RunningSortValue) : undefined}
-              sortLabel="Ordina"
-              visibleItems={6}
-              showVisibilityToggle
-              showMoreLabel="Mostra altre attività"
-              showLessLabel="Mostra meno"
-              showMoreTone="current"
-              showLessTone="current"
-              visibilityToggleClassName="[&_button.cardgrid-show-less]:border [&_button.cardgrid-show-less]:border-slate-900 [&_button.cardgrid-show-less]:bg-white [&_button.cardgrid-show-less]:text-slate-900 [&_button.cardgrid-show-less]:hover:bg-slate-100 [&_button.cardgrid-show-less]:dark:border-slate-900 [&_button.cardgrid-show-less]:dark:bg-white [&_button.cardgrid-show-less]:dark:text-slate-900 [&_button.cardgrid-show-less]:dark:hover:bg-slate-100"
-              activityPhotoBadgePosition="border"
-              activityPhotoBadgeSize="medium"
-              activityPhotoBadgeRounded={false}
-              activityTextColor="black"
-              onItemClick={(item) => handleActivityClick(item.id)}
-              data-testid="run-activities-grid-4"
-            />
-            {filteredActivities.length === 0 && (
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="run-activities-skeleton-4">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={`run-skeleton-${index}`} className="rounded-xl border border-slate-300/80 bg-white p-4 dark:border-slate-500/90 dark:border-2 dark:bg-slate-950/40">
+                    <div className="animate-pulse space-y-3">
+                      <div className="h-36 rounded-lg bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-3 w-1/2 rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-3 w-2/3 rounded bg-slate-200 dark:bg-slate-800" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <CardGrid
+                variant="activity"
+                title={isDesktop ? 'Attività recenti' : ''}
+                subtitle={isDesktop ? resultsLabel : ''}
+                items={activityGridItems}
+                columnsClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+                sectionClassName="px-0 py-0 bg-transparent"
+                cardClassName="border-slate-300/80 bg-white dark:border-slate-500/90 dark:border-2 dark:bg-slate-950/40"
+                useMotion={false}
+                showDate
+                showTypeBadge={false}
+                sortOptions={isDesktop ? [...runningSortOptions] : undefined}
+                sortValue={sortBy}
+                onSortChange={isDesktop ? (value) => setSortBy(value as RunningSortValue) : undefined}
+                sortLabel="Ordina"
+                visibleItems={6}
+                showVisibilityToggle
+                showMoreLabel="Mostra altre attività"
+                showLessLabel="Mostra meno"
+                showMoreTone="current"
+                showLessTone="current"
+                visibilityToggleClassName="[&_button.cardgrid-show-less]:border [&_button.cardgrid-show-less]:border-slate-900 [&_button.cardgrid-show-less]:bg-white [&_button.cardgrid-show-less]:text-slate-900 [&_button.cardgrid-show-less]:hover:bg-slate-100 [&_button.cardgrid-show-less]:dark:border-slate-900 [&_button.cardgrid-show-less]:dark:bg-white [&_button.cardgrid-show-less]:dark:text-slate-900 [&_button.cardgrid-show-less]:dark:hover:bg-slate-100"
+                activityPhotoBadgePosition="border"
+                activityPhotoBadgeSize="medium"
+                activityPhotoBadgeRounded={false}
+                activityTextColor="black"
+                onItemClick={(item) => handleActivityClick(item.id)}
+                data-testid="run-activities-grid-4"
+              />
+            )}
+            {!loading && activities.length === 0 && (
               <div className="mt-6 rounded-xl border border-slate-300/80 dark:border-slate-700 bg-sky-100/70 dark:bg-slate-900/80 p-8 text-center run-no-activities-4" data-testid="run-no-activities-4">
                 <p className="text-2xl mb-2">🔍</p>
                 <p className="font-semibold text-slate-700 dark:text-slate-200">Nessuna attività trovata</p>

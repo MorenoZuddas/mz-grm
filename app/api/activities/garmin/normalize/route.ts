@@ -3,6 +3,7 @@ import { Activity } from '@/lib/db/models/Activity';
 import { parseGarminJSON, GarminActivityJSON } from '@/lib/garmin/parser';
 import { NextRequest, NextResponse } from 'next/server';
 import { Types } from 'mongoose';
+import { requireAdminApiAccess } from '@/lib/api/admin';
 
 interface NormalizePreview {
   id: string;
@@ -106,6 +107,9 @@ function toGarminCandidate(doc: Record<string, unknown>): GarminActivityJSON | n
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const denied = requireAdminApiAccess(request);
+    if (denied) return denied;
+
     await connectToDatabase();
 
     const body: NormalizeBody = (await request.json().catch(() => ({}))) as NormalizeBody;
