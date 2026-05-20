@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { PageShell, type PageBackground } from '@/components/generic';
 
-interface EquipmentItem {
+export interface EquipmentItem {
   id: string;
   name: string;
   category: string;
@@ -18,6 +18,8 @@ interface EquipmentItem {
   condition: 'Nuovo' | 'Buono' | 'Usurato';
   url?: string;
   image?: string;
+  productDescription?: string;
+  productUrl?: string;
 }
 
 interface EquipmentPageProps {
@@ -102,17 +104,17 @@ export default function EquipmentPage({
                 {category}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {categoryItems.map((item) => (
-                  <a
+                {categoryItems.map((item) => {
+                  const officialUrl = item.productUrl || item.url;
+
+                  return (
+                    <article
                     key={item.id}
-                    href={item.url || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className="group/card relative rounded-lg border border-[1.5px] border-[#1e3a8a] bg-white dark:bg-slate-950/40 overflow-hidden hover:shadow-md transition-all self-start hover:scale-105 duration-200"
                   >
                     {/* Immagine */}
                     {item.image && !imageErrors[item.id] ? (
-                      <div className="relative h-40 bg-slate-100 dark:bg-slate-900 overflow-hidden">
+                      <div className="relative h-40 bg-slate-100 dark:bg-slate-900 overflow-hidden p-3">
                         <Image
                           src={item.image}
                           alt={item.name}
@@ -121,7 +123,7 @@ export default function EquipmentPage({
                           onError={() => {
                             setImageErrors((prev) => ({ ...prev, [item.id]: true }));
                           }}
-                          className="object-cover group-hover/card:scale-110 transition-transform duration-300"
+                          className="object-contain group-hover/card:scale-105 transition-transform duration-300"
                           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         />
                       </div>
@@ -188,16 +190,23 @@ export default function EquipmentPage({
                         )}
                       </div>
 
-                      {item.url && (
+                      {officialUrl && (
                         <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                          <p className="text-[10px] text-blue-600 dark:text-blue-400 truncate hover:underline">
-                            Visualizza prodotto →
-                          </p>
+                          <a
+                            href={officialUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-blue-600 dark:text-blue-400 truncate hover:underline inline-block"
+                            title={item.productDescription || 'Vai alla scheda ufficiale del prodotto'}
+                          >
+                            Product Description →
+                          </a>
                         </div>
                       )}
                     </div>
-                  </a>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             </div>
           ))}
