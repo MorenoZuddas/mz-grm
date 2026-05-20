@@ -1,8 +1,9 @@
 "use client";
 
 import Link from 'next/link';
+import Image from 'next/image';
+import { useState } from 'react';
 import { PageShell, type PageBackground } from '@/components/generic';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface EquipmentItem {
   id: string;
@@ -15,6 +16,8 @@ interface EquipmentItem {
   icon: string;
   km?: number;
   condition: 'Nuovo' | 'Buono' | 'Usurato';
+  url?: string;
+  image?: string;
 }
 
 interface EquipmentPageProps {
@@ -60,6 +63,7 @@ export default function EquipmentPage({
   backLabel = '← Torna Indietro',
   conditionClassMap,
 }: EquipmentPageProps) {
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const resolvedConditionClassMap = { ...defaultConditionClassMap, ...conditionClassMap };
   const groupedByCategory = items.reduce((acc, item) => {
     if (!acc[item.category]) {
@@ -97,43 +101,102 @@ export default function EquipmentPage({
               <h2 className={`text-2xl font-bold mb-6 ${toneTitleClassMap[tone]}`}>
                 {category}
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {categoryItems.map((item) => (
-                  <Card key={item.id} className="hover:shadow-lg transition-shadow" tone={tone}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            <span className="text-2xl">{item.icon}</span>
+                  <a
+                    key={item.id}
+                    href={item.url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group/card relative rounded-lg border border-[1.5px] border-[#1e3a8a] bg-white dark:bg-slate-950/40 overflow-hidden hover:shadow-md transition-all self-start hover:scale-105 duration-200"
+                  >
+                    {/* Immagine */}
+                    {item.image && !imageErrors[item.id] ? (
+                      <div className="relative h-40 bg-slate-100 dark:bg-slate-900 overflow-hidden">
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          fill
+                          unoptimized
+                          onError={() => {
+                            setImageErrors((prev) => ({ ...prev, [item.id]: true }));
+                          }}
+                          className="object-cover group-hover/card:scale-110 transition-transform duration-300"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
+                        <div className="text-center px-4">
+                          <div className="text-3xl mb-2">{item.icon}</div>
+                          <p className="text-xs font-medium text-slate-700 dark:text-slate-300 line-clamp-2">
                             {item.name}
-                          </CardTitle>
-                          <CardDescription>
-                            {item.brand} {item.model}
-                          </CardDescription>
+                          </p>
                         </div>
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${resolvedConditionClassMap[item.condition]}`}>
+                      </div>
+                    )}
+
+                    {/* Glow bordo */}
+                    <div
+                      className="absolute inset-0 rounded-lg pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity"
+                      style={{
+                        boxShadow: 'inset 0 0 16px rgba(30, 58, 138, 0.25), 0 0 20px rgba(30, 58, 138, 0.25)',
+                      }}
+                    />
+
+                    {/* Contenuto */}
+                    <div className="relative z-10 p-4 space-y-3">
+                      {/* Header con icon e condition */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-2xl flex-shrink-0">{item.icon}</span>
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-sm leading-tight text-slate-900 dark:text-white">
+                              {item.name}
+                            </h3>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                              {item.brand} {item.model}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full flex-shrink-0 ${resolvedConditionClassMap[item.condition]}`}>
                           {item.condition}
                         </span>
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-sm text-[var(--color-comp-equipment-meta-text)]">
+
+                      {/* Centro bar decorativo */}
+                      <div className="flex justify-center pt-1">
+                        <div className="h-1 w-6 bg-gradient-to-r from-transparent via-purple-400 to-transparent rounded-full" />
+                      </div>
+
+                      {/* Descrizione */}
+                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                         {item.description}
                       </p>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
+
+                      {/* Meta info */}
+                      <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                         <div>
-                          <p className="text-[var(--color-comp-equipment-meta-text)]">Anno Acquisto</p>
-                          <p className="font-semibold text-[var(--color-tone-current-title)]">{item.year}</p>
+                          <p className="text-slate-500 dark:text-slate-500">Anno Acquisto</p>
+                          <p className="font-semibold text-slate-900 dark:text-white">{item.year}</p>
                         </div>
                         {item.km && (
                           <div>
-                            <p className="text-[var(--color-comp-equipment-meta-text)]">Km/Usi</p>
-                            <p className="font-semibold text-[var(--color-tone-current-title)]">{item.km}</p>
+                            <p className="text-slate-500 dark:text-slate-500">Km/Usi</p>
+                            <p className="font-semibold text-slate-900 dark:text-white">{item.km}</p>
                           </div>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
+
+                      {item.url && (
+                        <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                          <p className="text-[10px] text-blue-600 dark:text-blue-400 truncate hover:underline">
+                            Visualizza prodotto →
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </a>
                 ))}
               </div>
             </div>

@@ -1018,7 +1018,7 @@ function CardGridSection() {
    const [visible, setVisible] = useState("4")
    const [maxCards, setMaxCards] = useState("")
    const [tone, setTone] = useState<Tone>("current")
-   const [variant, setVariant] = useState<"default" | "activity" | "flip-card">("activity")
+   const [variant, setVariant] = useState<"default" | "activity" | "flip-card">("default")
    const [flipCardOrientation, setFlipCardOrientation] = useState<"horizontal" | "vertical">("horizontal")
    const [flipCardWidth, setFlipCardWidth] = useState<"small" | "medium" | "large">("large")
     const [flipCardColumns, setFlipCardColumns] = useState<"1" | "2" | "3" | "4">("3")
@@ -1026,20 +1026,14 @@ function CardGridSection() {
    const [flipCardItemCount, setFlipCardItemCount] = useState<"1" | "2" | "3" | "4" | "5">("3")
    const [flipCardImageUrl, setFlipCardImageUrl] = useState("https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80")
    const [badgePos, setBadgePos] = useState<"border" | "date-row">("border")
-   const [badgeSize, setBadgeSize] = useState<"small" | "medium" | "large">("medium")
-   const [badgeRounded, setBadgeRounded] = useState(false)
+   const [badgeSize, setBadgeSize] = useState<"small" | "medium" | "large">("small")
+   const [badgeRounded, setBadgeRounded] = useState(true)
    const [activityTextColor, setActivityTextColor] = useState<Tone>("current")
    const [showDate, setShowDate] = useState(true)
    const [showBadge, setShowBadge] = useState(true)
    const [showBadgeOnImage, setShowBadgeOnImage] = useState(false)
    const [showDesc, setShowDesc] = useState(false)
-   const [cardHeight, setCardHeight] = useState<"small" | "medium" | "large">("small")
-   const [centerCardContent, setCenterCardContent] = useState(true)
-   const [showCenterBar, setShowCenterBar] = useState(true)
-   const [centerBarColor, setCenterBarColor] = useState("purple")
-   const [showCustomBorder, setShowCustomBorder] = useState(true)
-   const [showBorderGlow, setShowBorderGlow] = useState(true)
-   const [customBorderColor, setCustomBorderColor] = useState("navy")
+   const [cardHeight, setCardHeight] = useState<"small" | "medium" | "large">("medium")
     const items = useMemo(() => {
       if (variant === "activity") return makeActivityItems(Number(total))
       if (variant === "flip-card") return makeFlipCardItems(Number(flipCardItemCount))
@@ -1053,7 +1047,9 @@ function CardGridSection() {
            <div className="grid gap-2">
              <Ctl label="tone" value={tone} options={CARD_TONES} onChange={setTone} />
              <Ctl label="variant" value={variant} options={["default", "activity", "flip-card"]} onChange={setVariant} />
-             <Ctl label="cardHeight" value={cardHeight} options={["small", "medium", "large"]} onChange={(v) => setCardHeight(v as "small" | "medium" | "large")} />
+             {(variant === "default" || variant === "flip-card") && (
+               <Ctl label="cardHeight" value={cardHeight} options={["small", "medium", "large"]} onChange={(v) => setCardHeight(v as "small" | "medium" | "large")} />
+             )}
              {variant === "activity" && (
                <>
                  <Ctl label="photo badge pos" value={badgePos} options={["border", "date-row"]} onChange={(v) => setBadgePos(v as "border" | "date-row")} />
@@ -1080,24 +1076,10 @@ function CardGridSection() {
               {variant !== "flip-card" && (
                 <Ctl label="maxCards" value={maxCards} options={["", "1", "2", "3", "4", "6", "8", "10", "12"]} onChange={setMaxCards} />
               )}
-              {variant !== "flip-card" && (
-                <>
-                  <Toggle label="show date" checked={showDate} onChange={setShowDate} />
-                  <Toggle label="center card content" checked={centerCardContent} onChange={setCenterCardContent} />
-                  <Toggle label="show center bar" checked={showCenterBar} onChange={setShowCenterBar} />
-                  <Ctl label="center bar color" value={centerBarColor} options={["current", "blue", "purple", "black", "navy", "crimson", "pear"]} onChange={setCenterBarColor} />
-                  <Toggle label="show custom border" checked={showCustomBorder} onChange={setShowCustomBorder} />
-                  <Toggle label="show border glow" checked={showBorderGlow} onChange={setShowBorderGlow} />
-                  <Ctl label="custom border color" value={customBorderColor} options={["current", "blue", "purple", "black", "navy", "crimson", "pear"]} onChange={setCustomBorderColor} />
-                </>
-              )}
-              {variant === "default" && (
-                <>
-                  <Toggle label="show badge" checked={showBadge} onChange={setShowBadge} />
-                  <Toggle label="badge on image" checked={showBadgeOnImage} onChange={setShowBadgeOnImage} />
-                  <Toggle label="show desc" checked={showDesc} onChange={setShowDesc} />
-                </>
-              )}
+              <Toggle label="show date" checked={showDate} onChange={setShowDate} />
+              <Toggle label="show badge" checked={showBadge} onChange={setShowBadge} />
+              <Toggle label="badge on image" checked={showBadgeOnImage} onChange={setShowBadgeOnImage} />
+              <Toggle label="show desc" checked={showDesc} onChange={setShowDesc} />
            </div>
         </Panel>
          <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
@@ -1107,7 +1089,7 @@ function CardGridSection() {
              items={items}
              variant={variant}
              tone={tone}
-             cardHeight={cardHeight}
+             cardHeight={variant === "activity" ? undefined : cardHeight}
              visibleItems={variant !== "flip-card" && maxCards ? undefined : Number(visible)}
              showVisibilityToggle={variant !== "flip-card" && !maxCards}
              showMoreLabel="Mostra tutte"
@@ -1128,12 +1110,6 @@ function CardGridSection() {
              flipCardCenterIncompleteRow={variant === "flip-card" ? flipCardCenterIncompleteRow : undefined}
              flipCardImageSrc={variant === "flip-card" ? flipCardImageUrl : undefined}
              flipCardImageAlt={variant === "flip-card" ? "Demo flip-card" : undefined}
-             centerCardContent={centerCardContent}
-             showCenterBar={showCenterBar}
-             centerBarColor={centerBarColor}
-             showCustomBorder={showCustomBorder}
-             showBorderGlow={showBorderGlow}
-             customBorderColor={customBorderColor}
              sectionClassName="px-6 py-8 bg-white dark:bg-slate-900"
            />
          </div>
@@ -1145,8 +1121,6 @@ function CardGridSection() {
            <p>Le card mostrano la data dell&apos;attività nel formato italiano (es: &quot;1 aprile 2026&quot;). Utilizza il toggle <span className="font-medium">&quot;show date&quot;</span> per mostrare o nascondere le date sulle card.</p>
            <p><span className="font-medium">&quot;badge on image&quot;</span> sposta il BadgeChip dalla riga titolo alla parte alta della foto (overlay).</p>
            <p><span className="font-medium">Variant &quot;activity&quot;</span>: card per attività running con foto opzionale, titolo, data, distanza e tempo.</p>
-            <p><span className="font-medium">cardHeight</span> ora vale anche per activity: usa <span className="font-medium">small</span> per card più compatte.</p>
-            <p><span className="font-medium">Fix layout/stile</span>: puoi centrare il contenuto, aggiungere barra centrale e personalizzare bordo + glow.</p>
            <p className="mt-3 font-semibold uppercase tracking-wider"> maxCards:</p>
            <p>La prop <span className="font-medium">maxCards</span> limita il numero di card visualizzate in modo diretto (senza toggle &quot;Mostra tutte&quot;). Utile per mostrare un numero fisso di card, es: 4 card per riga. Lascia vuoto per usare il sistema di pagina con toggle.</p>
          </div>
@@ -1157,30 +1131,20 @@ function CardGridSection() {
              items={[
                { prop: "tone", values: [...CARD_TONES] },
                { prop: "variant", values: ["default", "activity", "flip-card"] },
-               { prop: "cardHeight", values: ["small", "medium", "large"] },
+               ...(variant !== "activity" ? [{ prop: "cardHeight", values: ["small", "medium", "large"] }] : []),
                { prop: "total cards", values: ["3", "4", "6", "8", "10", "12"] },
                { prop: "visible cards", values: ["3", "4", "6", "8", "10", "12"] },
                ...(variant !== "flip-card" ? [{ prop: "maxCards", values: ["", "1", "2", "3", "4", "6", "8", "10", "12"] }] : []),
-                ...(variant !== "flip-card" ? [
-                  { prop: "showDate", values: ["true", "false"] },
-                  { prop: "centerCardContent", values: ["true", "false"] },
-                  { prop: "showCenterBar", values: ["true", "false"] },
-                  { prop: "centerBarColor", values: ["current", "blue", "purple", "black", "navy", "crimson", "pear"] },
-                  { prop: "showCustomBorder", values: ["true", "false"] },
-                  { prop: "showBorderGlow", values: ["true", "false"] },
-                  { prop: "customBorderColor", values: ["current", "blue", "purple", "black", "navy", "crimson", "pear"] },
-                ] : []),
-                ...(variant === "default" ? [
-                  { prop: "showTypeBadge", values: ["true", "false"] },
-                  { prop: "showBadgeOnImage", values: ["true", "false"] },
-                  { prop: "showDescription", values: ["true", "false"] },
-                ] : []),
                ...(variant === "activity" ? [
                  { prop: "activityPhotoBadgePosition", values: ["border", "date-row"] },
                  { prop: "activityPhotoBadgeSize", values: ["small", "medium", "large"] },
                  { prop: "activityPhotoBadgeRounded", values: ["true", "false"] },
                  { prop: "activityTextColor", values: [...CARD_TONES] },
                ] : []),
+               { prop: "showDate", values: ["true", "false"] },
+               { prop: "showTypeBadge", values: ["true", "false"] },
+               { prop: "showBadgeOnImage", values: ["true", "false"] },
+               { prop: "showDescription", values: ["true", "false"] },
                ...(variant === "flip-card" ? [
                  { prop: "flipCardOrientation", values: ["horizontal", "vertical"], description: "Orientation per il flip-card (vertical = 1 colonna)" },
                   { prop: "flipCardWidth", values: ["small (50%)", "medium (75%)", "large (100%)"], description: "Larghezza card su desktop" },

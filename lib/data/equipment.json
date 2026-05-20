@@ -1,0 +1,154 @@
+{
+  "running": [
+    {
+      "id": "shoe-asics-noosa",
+      "name": "ASICS Noosa Tri 16",
+      "category": "Scarpe",
+      "brand": "ASICS",
+      "model": "Noosa Tri 16",
+      "year": 2024,
+      "description": "Scarpe versatili da running road con ammortizzazione reattiva. Ideali per allenamenti quotidiani e gare.",
+      "icon": "👟",
+      "condition": "Buono",
+      "url": "https://outlet.asics.com/it/it-it/noosa-tri-16/p/1011B872-751.html"
+    },
+    {
+      "id": "shoe-adidas-adistar",
+      "name": "Adidas Adistar 3",
+      "category": "Scarpe",
+      "brand": "Adidas",
+      "model": "Adistar 3",
+      "year": 2024,
+      "description": "Scarpe running da strada con tecnologia Lightstrike. Perfette per allenamenti e competizioni.",
+      "icon": "👟",
+      "condition": "Buono",
+      "url": "https://www.adidas.it/scarpe-running-adistar-3/IF7311.html"
+    },
+    {
+      "id": "shoe-kiprun-kd500",
+      "name": "Kiprun KD 500.3",
+      "category": "Scarpe",
+      "brand": "Kiprun",
+      "model": "KD 500.3",
+      "year": 2023,
+      "description": "Scarpe running leggere con buona ammortizzazione. Ideali per allenamenti quotidiani e trail moderato.",
+      "icon": "👟",
+      "condition": "Buono",
+      "url": "https://www.decathlon.it/kiprun-kd-500-3-grigio-nero-id_8682509.html"
+    },
+    {
+      "id": "shoe-kiprun-ks500",
+      "name": "Kiprun KS 500.2",
+      "category": "Scarpe",
+      "brand": "Kiprun",
+      "model": "KS 500.2",
+      "year": 2023,
+      "description": "Scarpe running stabili con supporto dell'arco plantare. Perfette per chi ha pronazione.",
+      "icon": "👟",
+      "condition": "Buono",
+      "url": "https://www.decathlon.it/kiprun-ks-500-2-grigio-blu-id_8682546.html"
+    },
+    {
+      "id": "shoe-adidas-boston",
+      "name": "Adidas Boston 13",
+      "category": "Scarpe",
+      "brand": "Adidas",
+      "model": "Boston 13",
+      "year": 2024,
+      "description": "Scarpe running da gara leggere e reattive. Perfette per competizioni e allenamenti veloci.",
+      "icon": "👟",
+      "condition": "Buono",
+      "url": "https://www.adidas.it/scarpe-running-boston-13/IF5555.html"
+    },
+    {
+      "id": "watch-garmin-fenix",
+      "name": "Garmin Fenix 7",
+      "category": "Orologio",
+      "brand": "Garmin",
+      "model": "Fenix 7",
+      "year": 2024,
+      "description": "Orologio sportivo multisport con GPS. Traccia running, nuoto, ciclismo con metriche avanzate.",
+      "icon": "⌚",
+      "condition": "Nuovo",
+      "url": "https://www.garmin.com/it-IT/p/735611/pn/010-02540-01/#specs"
+    },
+    {
+      "id": "backpack-crivit",
+      "name": "Zaino Crivit Running",
+      "category": "Accessori",
+      "brand": "Crivit",
+      "model": "Running Backpack",
+      "year": 2024,
+      "description": "Zaino leggero da running con borraccia integrata. Comodo per allenamenti e corse su strada.",
+      "icon": "🎒",
+      "condition": "Nuovo",
+      "url": "https://www.lidl.it/"
+    }
+  ],
+  "trekking": [
+    {
+      "id": "boots-1",
+      "name": "Scarponi Trekking",
+      "category": "Calzature",
+      "brand": "Salomon",
+      "model": "X Ultra Mid 4 GTX",
+      "year": 2024,
+      "description": "Scarponi impermeabili con ottimo grip per sentieri tecnici e uscite lunghe.",
+      "icon": "🥾",
+      "km": 320,
+      "condition": "Buono",
+      "url": "https://www.salomon.com/it/product/x-ultra-mid-4-gtx.html"
+    },
+    {
+      "id": "pack-1",
+      "name": "Zaino Escursionismo",
+      "category": "Zaino",
+      "brand": "Osprey",
+      "model": "Talon 22",
+      "year": 2024,
+      "description": "Zaino leggero e stabile per trekking giornalieri, con tasche rapide e supporto idrico.",
+      "icon": "🎒",
+      "condition": "Nuovo",
+      "url": "https://www.osprey.com/it/it/product/talon-22/10002521.html"
+    },
+    {
+      "id": "poles-1",
+      "name": "Bastoncini Trekking",
+      "category": "Accessori",
+      "brand": "Black Diamond",
+      "model": "Trail Explorer 3",
+      "year": 2023,
+      "description": "Bastoncini regolabili in alluminio utili su salite ripide e discese lunghe.",
+      "icon": "🦯",
+      "condition": "Buono",
+      "url": "https://www.blackdiamondequipment.com/en-us/trekking-poles/"
+    },
+    {
+      "id": "shell-1",
+      "name": "Giacca Antipioggia",
+      "category": "Abbigliamento",
+      "brand": "The North Face",
+      "model": "DryVent Shell",
+      "year": 2024,
+      "description": "Shell antivento e impermeabile, compatta nello zaino e adatta a meteo variabile.",
+      "icon": "🧥",
+      "condition": "Nuovo",
+      "url": "https://www.thenorthfacestore.com/it/it/"
+    },
+    {
+      "id": "lamp-1",
+      "name": "Lampada Frontale",
+      "category": "Sicurezza",
+      "brand": "Petzl",
+      "model": "Actik Core",
+      "year": 2023,
+      "description": "Frontale ricaricabile utile per partenze all'alba, rientri tardi o emergenze.",
+      "icon": "🔦",
+      "condition": "Buono",
+      "url": "https://www.petzl.com/IT/it/Sport/Torce-frontali/ACTIK-CORE"
+    }
+  ]
+}
+
+
+

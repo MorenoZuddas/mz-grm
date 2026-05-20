@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -129,12 +129,6 @@ interface CardGridProps {
    onLoadMore?: () => void;
    isLoadingMore?: boolean;
    paginationResetKey?: string;
-   centerCardContent?: boolean;
-   showCenterBar?: boolean;
-   centerBarColor?: string;
-   showCustomBorder?: boolean;
-   showBorderGlow?: boolean;
-   customBorderColor?: string;
 }
 
 const defaultItems: CardGridItem[] = [
@@ -245,21 +239,6 @@ const flipCardToneMap: Record<string, string> = {
   black:   toneClasses.black,
 };
 
-const cardAccentColorMap: Record<string, string> = {
-  current: 'var(--color-comp-cardgrid-card-border)',
-  blue: 'var(--color-comp-tone-blue-border)',
-  purple: 'var(--color-comp-tone-purple-border)',
-  black: '#334155',
-  navy: '#1e3a8a',
-  crimson: 'var(--color-comp-tone-crimson-border)',
-  pear: 'var(--color-comp-tone-pear-border)',
-};
-
-function resolveCardAccentColor(color?: string, fallback = 'var(--color-comp-cardgrid-card-border)'): string {
-  if (!color) return fallback;
-  return cardAccentColorMap[color] ?? color;
-}
-
 function getFlipCardToneClass(tone?: string, fallbackIndex?: number): string {
   if (tone && flipCardToneMap[tone]) return flipCardToneMap[tone];
   const idx = (fallbackIndex ?? 0) % flipCardPaletteClasses.length;
@@ -326,24 +305,18 @@ function useIsDesktop(): boolean {
   );
 }
 
-// cardHeight per default, activity e flip-card
-const cardHeightVariants: Record<CardHeightVariant, { image: string; activityImage: string; activityCard: string; flipCard: string }> = {
+// cardHeight per default e flip-card (non usato da activity)
+const cardHeightVariants: Record<CardHeightVariant, { image: string; flipCard: string }> = {
    small: {
      image:    'h-36',
-     activityImage: 'h-32',
-     activityCard: '',
      flipCard:  'h-32 sm:h-36',
    },
    medium: {
      image:    'h-48',
-     activityImage: 'h-40',
-     activityCard: '',
      flipCard:  'h-36 sm:h-40',
    },
    large: {
      image:    'h-60',
-     activityImage: 'h-52',
-     activityCard: '',
      flipCard:  'h-40 sm:h-44',
    },
 };
@@ -539,12 +512,6 @@ export function CardGrid({
    onLoadMore,
    isLoadingMore = false,
    paginationResetKey = 'default',
-   centerCardContent = false,
-   showCenterBar = false,
-   centerBarColor,
-   showCustomBorder = false,
-   showBorderGlow = false,
-   customBorderColor,
 }: CardGridProps) {
    const resolvedTitleColor = headerColor ?? (tone ?? titleColor);
    const resolvedSubtitleColor = headerColor ?? (tone ?? subtitleColor);
@@ -614,34 +581,6 @@ export function CardGrid({
   const defaultCardTitleClass = 'text-xl text-[var(--color-comp-cardgrid-card-title)] transition-colors group-hover:text-[var(--color-comp-cardgrid-card-title-hover)]';
   const defaultCardDescriptionClass = 'text-sm text-[var(--color-comp-cardgrid-card-description)]';
   const defaultCardMetaClass = 'text-sm text-[var(--color-comp-cardgrid-card-meta)]';
-  const resolvedBarColor = resolveCardAccentColor(centerBarColor, 'var(--color-comp-cardgrid-card-title)');
-  const resolvedBorderColor = resolveCardAccentColor(customBorderColor, 'var(--color-comp-cardgrid-card-border)');
-  const defaultHeaderLayoutClass = centerCardContent
-    ? 'flex flex-col items-center justify-center gap-2 text-center'
-    : 'flex items-start justify-between gap-2';
-  const activityCardSize = cardHeight === 'small' ? 'sm' : cardHeight === 'large' ? 'lg' : 'md';
-  // Per small forziamo padding esplicito compatto (non ci affidiamo solo al size group di Tailwind)
-  const activityHeaderPadding = cardHeight === 'small' ? 'pt-3 px-4 !pb-0' : cardHeight === 'large' ? 'p-8 pb-2' : 'p-6 pb-2';
-  const activityHeaderClass = centerCardContent
-    ? `${activityHeaderPadding} text-center items-center`
-    : `${activityHeaderPadding}`;
-  const activityMetaClass = centerCardContent ? 'flex items-center justify-center gap-2 mt-0.5 activity-card-meta' : 'flex items-center justify-between mt-0.5 activity-card-meta';
-  const defaultCardContentClass = centerCardContent ? 'space-y-2 text-center' : 'space-y-2';
-  const activityMetricsPadding = cardHeight === 'small' ? 'px-4 pb-3' : cardHeight === 'large' ? 'px-8 pb-6' : 'px-6 pb-4';
-  const activityCardMetricsClass = centerCardContent
-    ? `grid grid-cols-2 ${cardHeight === 'small' ? 'gap-2' : cardHeight === 'large' ? 'gap-5' : 'gap-4'} ${activityMetricsPadding} pt-0 activity-card-metrics text-center`
-    : `grid grid-cols-2 ${cardHeight === 'small' ? 'gap-2' : cardHeight === 'large' ? 'gap-5' : 'gap-4'} ${activityMetricsPadding} pt-0 activity-card-metrics`;
-  const activityTitleClass = `truncate ${cardHeight === 'small' ? 'text-base font-semibold' : cardHeight === 'large' ? 'text-xl' : 'text-lg'} ${activityTextStyle.title}`;
-  const activityMetricLabelClass = `text-xs ${activityTextStyle.label}`;
-  const activityMetricValueClass = `font-bold ${activityTextStyle.value} ${cardHeight === 'large' ? 'text-lg' : 'text-base'}`;
-  const cardBorderStyle: CSSProperties | undefined = showCustomBorder || showBorderGlow
-    ? {
-        borderColor: resolvedBorderColor,
-        boxShadow: showBorderGlow
-          ? `0 0 0 1px color-mix(in srgb, ${resolvedBorderColor} 25%, transparent), 0 20px 40px -16px color-mix(in srgb, ${resolvedBorderColor} 35%, transparent)`
-          : undefined,
-      }
-    : undefined;
 
   return (
     <section className={`cardgrid-component ${sectionClassName} ${className}`} data-testid="cardgrid-section">
@@ -754,7 +693,7 @@ export function CardGrid({
               whileInView={useMotion ? { opacity: 1, y: 0 } : undefined}
               transition={useMotion ? { duration: 0.5, delay: index * 0.1 } : undefined}
               viewport={useMotion ? { once: true } : undefined}
-              className={`cardgrid-item-wrapper ${variant === 'activity' ? 'self-start' : ''}`}
+              className="cardgrid-item-wrapper"
               data-testid={`cardgrid-item-${item.id}`}
             >
               {onItemClick ? (
@@ -778,13 +717,11 @@ export function CardGrid({
                         />
                        )}
                         <Card
-                           className={`${baseCardSurfaceClass} overflow-hidden hover:shadow-lg transition-shadow ${cardHeightClass.activityCard} cursor-pointer group-hover:scale-[1.02] duration-300 activity-card ${cardClassName}`}
-                           style={cardBorderStyle}
-                           size={activityCardSize}
-                           data-testid={`activity-card-${item.id}`}
-                         >
-                          {item.image ? (
-                            <div className={`relative ${cardHeightClass.activityImage} w-full overflow-hidden bg-[var(--color-comp-cardgrid-image-bg)] activity-card-image-wrapper`}>
+                          className={`${baseCardSurfaceClass} overflow-hidden hover:shadow-lg transition-shadow h-full cursor-pointer group-hover:scale-[1.02] duration-300 activity-card ${cardClassName}`}
+                          data-testid={`activity-card-${item.id}`}
+                        >
+                         {item.image ? (
+                           <div className={`relative h-52 w-full overflow-hidden bg-[var(--color-comp-cardgrid-image-bg)] activity-card-image-wrapper`}>
                             <Image
                               src={item.image}
                               alt={item.title}
@@ -795,17 +732,14 @@ export function CardGrid({
                             />
                           </div>
                         ) : null}
-                        <CardHeader className={activityHeaderClass}>
-                          {showCenterBar ? (
-                            <div className="mx-auto mb-1 h-1 w-12 rounded-full" style={{ backgroundColor: resolvedBarColor }} aria-hidden="true" />
-                          ) : null}
+                        <CardHeader className="pb-2">
                           <CardTitle
-                            className={activityTitleClass}
+                            className={`text-lg truncate ${activityTextStyle.title}`}
                             data-testid={`activity-card-title-${item.id}`}
                           >
                             {item.title}
                           </CardTitle>
-                          <div className={activityMetaClass}>
+                          <div className="flex items-center justify-between mt-1 activity-card-meta">
                             {showDate && item.date ? (
                               <p
                                 className={`text-xs ${activityTextStyle.date}`}
@@ -827,20 +761,20 @@ export function CardGrid({
                             )}
                           </div>
                         </CardHeader>
-                        <CardContent className={activityCardMetricsClass}>
+                        <CardContent className="grid grid-cols-2 gap-4 activity-card-metrics">
                           <div className="activity-metric">
-                            <p className={activityMetricLabelClass}>Distanza</p>
+                            <p className={`text-xs ${activityTextStyle.label}`}>Distanza</p>
                             <p
-                              className={activityMetricValueClass}
+                              className={`font-bold ${activityTextStyle.value}`}
                               data-testid={`activity-card-distance-${item.id}`}
                             >
                               {item.distance || '—'}
                             </p>
                           </div>
                           <div className="activity-metric">
-                            <p className={activityMetricLabelClass}>Tempo</p>
+                            <p className={`text-xs ${activityTextStyle.label}`}>Tempo</p>
                             <p
-                              className={activityMetricValueClass}
+                              className={`font-bold ${activityTextStyle.value}`}
                               data-testid={`activity-card-duration-${item.id}`}
                             >
                               {item.duration || '—'}
@@ -850,7 +784,7 @@ export function CardGrid({
                       </Card>
                     </div>
                   ) : (
-                    <Card className={`${baseCardSurfaceClass} relative overflow-hidden hover:shadow-lg transition-shadow h-full cursor-pointer group-hover:scale-[1.02] duration-300 ${cardClassName}`} style={cardBorderStyle}>
+                    <Card className={`${baseCardSurfaceClass} relative overflow-hidden hover:shadow-lg transition-shadow h-full cursor-pointer group-hover:scale-[1.02] duration-300 ${cardClassName}`}>
                       {showTypeBadge && !showBadgeOnImage && toBadgeType(item.type) && (
                         <div className="absolute top-3 right-3 z-20 sm:hidden">
                           <BadgeChip type={toBadgeType(item.type) as BadgeChipType} text={item.type} className="whitespace-nowrap" />
@@ -874,11 +808,8 @@ export function CardGrid({
                           />
                         )}
                       </div>
-                      <CardHeader className={centerCardContent ? 'text-center' : ''}>
-                        {showCenterBar ? (
-                          <div className="mx-auto mb-2 h-1 w-12 rounded-full" style={{ backgroundColor: resolvedBarColor }} aria-hidden="true" />
-                        ) : null}
-                        <div className={defaultHeaderLayoutClass}>
+                      <CardHeader>
+                        <div className="flex items-start justify-between gap-2">
                           <CardTitle className={defaultCardTitleClass}>
                             {item.title}
                           </CardTitle>
@@ -887,7 +818,7 @@ export function CardGrid({
                           )}
                         </div>
                       </CardHeader>
-                      <CardContent className={defaultCardContentClass}>
+                      <CardContent className="space-y-2">
                         {showDescription && item.description && (
                             <p className={defaultCardDescriptionClass}>{item.description}</p>
                         )}
@@ -911,14 +842,12 @@ export function CardGrid({
                            className="absolute -top-0 right-3 z-20 shadow-sm"
                          />
                        )}
-                         <Card
-                           className={`${baseCardSurfaceClass} overflow-hidden hover:shadow-lg transition-shadow ${cardHeightClass.activityCard} cursor-pointer group-hover:scale-[1.02] duration-300 activity-card ${cardClassName}`}
-                           style={cardBorderStyle}
-                           size={activityCardSize}
-                           data-testid={`activity-card-${item.id}`}
-                         >
-                           {item.image ? (
-                             <div className={`relative ${cardHeightClass.activityImage} w-full overflow-hidden bg-[var(--color-comp-cardgrid-image-bg)]`}>
+                        <Card
+                          className={`${baseCardSurfaceClass} overflow-hidden hover:shadow-lg transition-shadow h-full cursor-pointer group-hover:scale-[1.02] duration-300 activity-card ${cardClassName}`}
+                          data-testid={`activity-card-${item.id}`}
+                        >
+                          {item.image ? (
+                            <div className={`relative h-52 w-full overflow-hidden bg-[var(--color-comp-cardgrid-image-bg)]`}>
                              <Image
                                src={item.image}
                                alt={item.title}
@@ -928,14 +857,11 @@ export function CardGrid({
                              />
                            </div>
                          ) : null}
-                         <CardHeader className={activityHeaderClass}>
-                           {showCenterBar ? (
-                             <div className="mx-auto mb-1 h-1 w-12 rounded-full" style={{ backgroundColor: resolvedBarColor }} aria-hidden="true" />
-                           ) : null}
-                           <CardTitle className={activityTitleClass}>
+                         <CardHeader className="pb-2">
+                           <CardTitle className={`text-lg truncate ${activityTextStyle.title}`}>
                              {item.title}
                            </CardTitle>
-                            <div className={centerCardContent ? 'flex items-center justify-center gap-2 mt-1' : 'flex items-center justify-between mt-1'}>
+                           <div className="flex items-center justify-between mt-1">
                              {showDate && item.date ? <p className={`text-xs ${activityTextStyle.date}`}>{item.date}</p> : <span />}
                              {item.hasPhoto && activityPhotoBadgePosition === 'date-row' && (
                                <BadgeChip
@@ -947,20 +873,20 @@ export function CardGrid({
                              )}
                            </div>
                          </CardHeader>
-                         <CardContent className={activityCardMetricsClass}>
+                         <CardContent className="grid grid-cols-2 gap-4">
                            <div>
-                             <p className={activityMetricLabelClass}>Distanza</p>
-                              <p className={activityMetricValueClass}>{item.distance || '—'}</p>
+                             <p className={`text-xs ${activityTextStyle.label}`}>Distanza</p>
+                             <p className={`font-bold ${activityTextStyle.value}`}>{item.distance || '—'}</p>
                            </div>
                            <div>
-                             <p className={activityMetricLabelClass}>Tempo</p>
-                              <p className={activityMetricValueClass}>{item.duration || '—'}</p>
+                             <p className={`text-xs ${activityTextStyle.label}`}>Tempo</p>
+                             <p className={`font-bold ${activityTextStyle.value}`}>{item.duration || '—'}</p>
                            </div>
                          </CardContent>
                        </Card>
                      </div>
                    ) : (
-                            <Card className={`${baseCardSurfaceClass} relative overflow-hidden hover:shadow-lg transition-shadow h-full cursor-pointer group-hover:scale-[1.02] duration-300 ${cardClassName}`} style={cardBorderStyle}>
+                           <Card className={`${baseCardSurfaceClass} relative overflow-hidden hover:shadow-lg transition-shadow h-full cursor-pointer group-hover:scale-[1.02] duration-300 ${cardClassName}`}>
                              {showTypeBadge && !showBadgeOnImage && toBadgeType(item.type) && (
                                <div className="absolute top-3 right-3 z-20 sm:hidden">
                                  <BadgeChip type={toBadgeType(item.type) as BadgeChipType} text={item.type} className="whitespace-nowrap" />
@@ -984,11 +910,8 @@ export function CardGrid({
                            />
                          )}
                        </div>
-                        <CardHeader className={centerCardContent ? 'text-center' : ''}>
-                          {showCenterBar ? (
-                            <div className="mx-auto mb-2 h-1 w-12 rounded-full" style={{ backgroundColor: resolvedBarColor }} aria-hidden="true" />
-                          ) : null}
-                          <div className={defaultHeaderLayoutClass}>
+                       <CardHeader>
+                         <div className="flex items-start justify-between gap-2">
                             <CardTitle className={defaultCardTitleClass}>
                              {item.title}
                            </CardTitle>
@@ -997,7 +920,7 @@ export function CardGrid({
                            )}
                          </div>
                        </CardHeader>
-                        <CardContent className={defaultCardContentClass}>
+                       <CardContent className="space-y-2">
                          {showDescription && item.description && (
                             <p className={defaultCardDescriptionClass}>{item.description}</p>
                          )}
