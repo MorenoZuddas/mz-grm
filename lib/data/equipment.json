@@ -91,7 +91,7 @@
       "description": "Orologio sportivo multisport con GPS. Traccia running, nuoto, ciclismo con metriche avanzate.",
       "icon": "⌚",
       "condition": "Nuovo",
-      "cardColor": "navy",
+      "cardColor": "glass",
       "image": "https://res.cloudinary.com/derbnvxif/image/upload/v1779269578/fenix_7_Background_Removed_zqpzg5.png"
     },
     {
@@ -104,7 +104,7 @@
       "description": "Smarthwatch con traccia GPS multisport.",
       "icon": "⌚",
       "condition": "Buono",
-      "cardColor": "navy",
+      "cardColor": "glass",
       "image": "https://res.cloudinary.com/derbnvxif/image/upload/v1779292824/watch_4_Background_Removed_zcrdnv.png"
     },
     {
