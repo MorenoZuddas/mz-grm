@@ -1,9 +1,11 @@
 import 'server-only';
 
-import type { EquipmentItem } from '@/components/EquipmentPage';
+import type { EquipmentItem } from '@/lib/equipment/types';
 
-type EquipmentJsonItem = Omit<EquipmentItem, 'condition'> & {
+type EquipmentJsonItem = Omit<EquipmentItem, 'condition' | 'cardColor' | 'visible'> & {
   condition: string;
+  cardColor?: string;
+  visible?: boolean;
 };
 
 function normalizeCondition(value: string): EquipmentItem['condition'] {
@@ -12,6 +14,18 @@ function normalizeCondition(value: string): EquipmentItem['condition'] {
   }
 
   return 'Buono';
+}
+
+function normalizeCardColor(value: string | undefined): EquipmentItem['cardColor'] {
+  if (value === 'default' || value === 'soft' || value === 'sky' || value === 'glass' || value === 'navy') {
+    return value;
+  }
+
+  return undefined;
+}
+
+function normalizeVisible(value: boolean | undefined): boolean {
+  return typeof value === 'boolean' ? value : true;
 }
 
 interface CloudinaryResource {
@@ -170,6 +184,8 @@ export async function hydrateEquipmentFromCloudinary(baseItems: EquipmentJsonIte
 
   return baseItems.map((item) => {
     const normalizedCondition = normalizeCondition(item.condition);
+    const normalizedCardColor = normalizeCardColor(item.cardColor);
+    const normalizedVisible = normalizeVisible(item.visible);
     const publicId = item.image && cloudName ? extractPublicIdFromCloudinaryUrl(item.image, cloudName) : null;
     const cloud = publicId ? cloudinaryByPublicId.get(publicId) : undefined;
 
@@ -177,12 +193,16 @@ export async function hydrateEquipmentFromCloudinary(baseItems: EquipmentJsonIte
       return {
         ...item,
         condition: normalizedCondition,
+        cardColor: normalizedCardColor,
+        visible: normalizedVisible,
       };
     }
 
     return {
       ...item,
       condition: normalizedCondition,
+      cardColor: normalizedCardColor,
+      visible: normalizedVisible,
       image: cloud.image || item.image,
       productDescription: cloud.productDescription || item.productDescription,
       productUrl: cloud.productUrl || item.productUrl || item.url,

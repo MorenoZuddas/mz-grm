@@ -2,7 +2,9 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-type CardVariant = 'default' | 'horizontal' | 'vertical'
+type CardVariant = 'default' | 'horizontal' | 'vertical' | 'equipment'
+type EquipmentBackground = 'default' | 'soft' | 'sky' | 'glass' | 'navy'
+type EquipmentFontSize = 'small' | 'medium' | 'large'
 export type CardTone = 'current' | 'blue' | 'purple' | 'black' | 'navy' | 'crimson' | 'pear'
 type CardSize = 'sm' | 'md' | 'lg'
 
@@ -22,6 +24,22 @@ const cardSizeClasses: Record<CardSize, string> = {
   lg: 'text-lg',
 }
 
+const cardVariantClasses: Record<CardVariant, string> = {
+  default: '',
+  horizontal: 'flex flex-row',
+  vertical: 'flex flex-col',
+  equipment:
+    'group/card relative w-full overflow-hidden border-[1.5px] border-[#1e3a8a] bg-white dark:bg-slate-950/40 hover:shadow-md transition-all duration-200',
+}
+
+const equipmentBackgroundClasses: Record<EquipmentBackground, string> = {
+  default: 'bg-white dark:bg-slate-950/40',
+  soft: 'bg-slate-50 dark:bg-slate-950/50',
+  sky: 'bg-sky-50/80 dark:bg-slate-950/55',
+  glass: 'bg-white/90 dark:bg-slate-900/50 backdrop-blur-sm',
+  navy: 'border-[var(--color-comp-tone-navy-border)] bg-[var(--color-comp-tone-navy-bg)] text-[var(--color-role-text-inverse)]',
+}
+
 const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
@@ -29,8 +47,10 @@ const Card = React.forwardRef<
     variant?: CardVariant;
     tone?: CardTone;
     size?: CardSize;
+    equipmentBackground?: EquipmentBackground;
+    equipmentFontSize?: EquipmentFontSize;
   }
->(({ className, dataName, variant = 'default', tone = 'current', size = 'md', ...props }, ref) => {
+>(({ className, dataName, variant = 'default', tone = 'current', size = 'md', equipmentBackground = 'default', equipmentFontSize = 'medium', ...props }, ref) => {
   return (
   <div
     ref={ref}
@@ -38,12 +58,14 @@ const Card = React.forwardRef<
       "group/card rounded-lg border shadow-sm",
       cardToneClasses[tone],
       cardSizeClasses[size],
-      variant === 'horizontal' && "flex flex-row",
-      variant === 'vertical' && "flex flex-col",
+      cardVariantClasses[variant],
+      variant === 'equipment' && equipmentBackgroundClasses[equipmentBackground],
       className
     )}
     data-name={dataName}
     data-size={size}
+    data-equipment-font-size={variant === 'equipment' ? equipmentFontSize : undefined}
+    data-equipment-background={variant === 'equipment' ? equipmentBackground : undefined}
     {...props}
   />
   )
@@ -84,7 +106,7 @@ const CardTitle = React.forwardRef<
   <h2
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight group-data-[size=sm]/card:text-xl group-data-[size=lg]/card:text-3xl",
+      "text-2xl font-semibold leading-none tracking-tight group-data-[size=sm]/card:text-xl group-data-[size=lg]/card:text-3xl group-data-[equipment-font-size=small]/card:text-base group-data-[equipment-font-size=medium]/card:text-lg group-data-[equipment-font-size=large]/card:text-xl",
       className
     )}
     {...props}
