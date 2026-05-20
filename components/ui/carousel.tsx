@@ -61,6 +61,7 @@ type CarouselCardsProps<TItem> = {
   getItemKey?: (item: TItem, index: number) => React.Key
   carouselCard?: ResponsiveCarouselCards
   cardsPerView?: ResponsiveCarouselCards
+  focusCenterSlide?: boolean
   itemClassName?: string
   contentClassName?: string
   showControls?: boolean
@@ -103,6 +104,8 @@ type CarouselSectionProps = {
   arrowsPosition?: ArrowsPosition
   /** Posizione frecce su mobile. Default: uguale a arrowsPosition */
   arrowsPositionMobile?: ArrowsPosition
+  /** Evidenzia la card centrale e attenua quelle laterali */
+  focusCenterSlide?: boolean
   // --- Default card config (sovrascrivibili per-item) ---
   /** Immagine di fallback per la card */
   cardImage?: string
@@ -196,6 +199,24 @@ function resolveCardsPerViewClass(
     cardsPerView.xl ? BASIS_CLASS_MAP.xl[cardsPerView.xl] : "",
   ]
   return classes.filter(Boolean).join(" ")
+}
+
+function resolveFocusSlideClass(index: number, selectedIndex: number, totalSlides: number, enabled?: boolean): string {
+  if (!enabled || totalSlides < 3) return ""
+
+  const centerIndex = selectedIndex
+  const leftIndex = (centerIndex - 1 + totalSlides) % totalSlides
+  const rightIndex = (centerIndex + 1) % totalSlides
+
+  if (index === centerIndex) {
+    return "lg:scale-[1.03] lg:opacity-100 lg:saturate-100 lg:shadow-2xl transition-all duration-300"
+  }
+
+  if (index === leftIndex || index === rightIndex) {
+    return "lg:scale-[0.98] lg:opacity-70 lg:saturate-80 lg:shadow-lg transition-all duration-300"
+  }
+
+  return "lg:opacity-50 lg:scale-[0.96] transition-all duration-300"
 }
 
 /** Restituisce le classi Tailwind per mostrare/nascondere i bottoni freccia
@@ -386,6 +407,7 @@ function CarouselCards<TItem>({
   getItemKey,
   carouselCard,
   cardsPerView,
+  focusCenterSlide = false,
   itemClassName,
   contentClassName,
   showControls = true,
@@ -450,18 +472,58 @@ function CarouselCards<TItem>({
     ? arrowVisibilityClasses("sides", mobilePos, arrowsPosition)
     : "hidden"
 
+  const resolvedOpts = {
+    align: (focusCenterSlide ? "center" : "start") as const,
+    ...(focusCenterSlide ? { loop: true as const } : {}),
+    ...opts,
+  }
+
   const carouselNode = (
-    <Carousel orientation={resolvedOrientation} opts={{ align: "start", ...opts }} setApi={setCarouselApi} {...props}>
+    <Carousel orientation={resolvedOrientation} opts={resolvedOpts} setApi={setCarouselApi} {...props}>
       <CarouselContent className={contentClassName}>
         {hasChildren
           ? React.Children.map(children, (child, index) => (
-              <CarouselItem key={React.isValidElement(child) && child.key != null ? child.key : index} className={cn(itemBasisClass, itemClassName)}>
-                {child}
+              <CarouselItem
+                key={React.isValidElement(child) && child.key != null ? child.key : index}
+                className={cn(itemBasisClass, itemClassName, "flex justify-center overflow-visible")}
+              >
+                <div
+                  className={cn(
+                    "w-full",
+                    resolveFocusSlideClass(index, selectedIndex, totalSlides, focusCenterSlide),
+                    focusCenterSlide && index !== selectedIndex && "lg:[&_a]:pointer-events-none lg:[&_button]:pointer-events-none"
+                  )}
+                  onClickCapture={(event) => {
+                    if (!focusCenterSlide || index === selectedIndex) return
+                    event.preventDefault()
+                    event.stopPropagation()
+                    carouselApi?.scrollTo(index)
+                  }}
+                >
+                  {child}
+                </div>
               </CarouselItem>
             ))
           : items?.map((item, index) => (
-              <CarouselItem key={getItemKey ? getItemKey(item, index) : index} className={cn(itemBasisClass, itemClassName)}>
-                {renderItem?.(item, index) ?? null}
+              <CarouselItem
+                key={getItemKey ? getItemKey(item, index) : index}
+                className={cn(itemBasisClass, itemClassName, "flex justify-center overflow-visible")}
+              >
+                <div
+                  className={cn(
+                    "w-full",
+                    resolveFocusSlideClass(index, selectedIndex, totalSlides, focusCenterSlide),
+                    focusCenterSlide && index !== selectedIndex && "lg:[&_a]:pointer-events-none lg:[&_button]:pointer-events-none"
+                  )}
+                  onClickCapture={(event) => {
+                    if (!focusCenterSlide || index === selectedIndex) return
+                    event.preventDefault()
+                    event.stopPropagation()
+                    carouselApi?.scrollTo(index)
+                  }}
+                >
+                  {renderItem?.(item, index) ?? null}
+                </div>
               </CarouselItem>
             ))}
       </CarouselContent>
@@ -619,6 +681,7 @@ function CarouselSection({
   descriptionClassName,
   gap = "md",
   cardsPerView = 1,
+  focusCenterSlide = false,
   showDots = true,
   dotsClassName,
   dotClassName,
@@ -662,6 +725,7 @@ function CarouselSection({
         getItemKey={(item, index) => item.id ?? index}
         gap={gap}
         cardsPerView={cardsPerView}
+        focusCenterSlide={focusCenterSlide}
         showDots={showDots}
         dotsClassName={dotsClassName}
         dotClassName={dotClassName}

@@ -32,6 +32,9 @@ interface CloudinaryResource {
   public_id?: string;
   secure_url?: string;
   metadata?: Record<string, string | number | undefined>;
+  context?: {
+    custom?: Record<string, string | number | undefined>;
+  };
 }
 
 interface CloudinaryEquipmentMeta {
@@ -61,9 +64,21 @@ function asString(value: unknown): string | undefined {
   return v.length > 0 ? v : undefined;
 }
 
+function normalizeMetaKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
 function metadataValue(metadata: Record<string, string | number | undefined>, keys: string[]): string | undefined {
+  const normalizedLookup = new Map<string, string>();
+
+  for (const [rawKey, rawValue] of Object.entries(metadata)) {
+    const value = asString(rawValue);
+    if (!value) continue;
+    normalizedLookup.set(normalizeMetaKey(rawKey), value);
+  }
+
   for (const key of keys) {
-    const value = asString(metadata[key]);
+    const value = asString(metadata[key]) ?? normalizedLookup.get(normalizeMetaKey(key));
     if (value) {
       return value;
     }
@@ -108,7 +123,7 @@ async function fetchSingleResourceMetadata(
   env: { cloudName: string; apiKey: string; apiSecret: string },
 ): Promise<CloudinaryEquipmentMeta | null> {
   const auth = Buffer.from(`${env.apiKey}:${env.apiSecret}`).toString('base64');
-  const url = `https://api.cloudinary.com/v1_1/${env.cloudName}/resources/image/upload/${encodeURIComponent(publicId)}?metadata=true`;
+  const url = `https://api.cloudinary.com/v1_1/${env.cloudName}/resources/image/upload/${encodeURIComponent(publicId)}?metadata=true&context=true`;
 
   try {
     const response = await fetch(url, {
@@ -122,7 +137,10 @@ async function fetchSingleResourceMetadata(
     }
 
     const resource = (await response.json()) as CloudinaryResource;
-    const metadata = resource.metadata ?? {};
+    const metadata = {
+      ...(resource.context?.custom ?? {}),
+      ...(resource.metadata ?? {}),
+    };
 
     const productDescription = metadataValue(metadata, [
       'productDescription',
@@ -133,9 +151,20 @@ async function fetchSingleResourceMetadata(
       'productUrl',
       'producturl',
       'product_url',
+      'productLink',
+      'productlink',
+      'product_link',
       'officialUrl',
       'officialurl',
       'official_url',
+      'url',
+      'link',
+      'shopUrl',
+      'shopurl',
+      'shop_url',
+      'buyUrl',
+      'buyurl',
+      'buy_url',
     ]);
 
     return {

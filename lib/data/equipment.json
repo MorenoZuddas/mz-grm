@@ -79,7 +79,7 @@
       "icon": "👟",
       "condition": "Nuovo",
       "cardColor": "soft",
-      "image": "https://res.cloudinary.com/derbnvxif/image/upload/v1779288998/puma_evospeed_Background_Removed_ojdugt.png"
+      "image": "https://res.cloudinary.com/derbnvxif/image/upload/v1779292825/puma_evospeed_Background_Removed_rxjg6f.png"
     },
     {
       "id": "watch-garmin-fenix",
@@ -93,6 +93,19 @@
       "condition": "Nuovo",
       "cardColor": "navy",
       "image": "https://res.cloudinary.com/derbnvxif/image/upload/v1779269578/fenix_7_Background_Removed_zqpzg5.png"
+    },
+    {
+      "id": "watch-galaxy-4",
+      "name": "Galaxy Watch 4",
+      "category": "Orologio",
+      "brand": "samsung",
+      "model": "Galaxy Watch 4",
+      "year": 2022,
+      "description": "Smarthwatch con traccia GPS multisport.",
+      "icon": "⌚",
+      "condition": "Buono",
+      "cardColor": "navy",
+      "image": "https://res.cloudinary.com/derbnvxif/image/upload/v1779292824/watch_4_Background_Removed_zcrdnv.png"
     },
     {
       "id": "backpack-crivit",

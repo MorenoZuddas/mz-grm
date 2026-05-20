@@ -6,6 +6,7 @@ import type { EquipmentItem } from '@/lib/equipment/types';
 import { Divider, PageShell, Text } from '@/components/generic';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { CarouselCards } from '@/components/ui/carousel';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,90 +84,114 @@ export default async function TrekkingEquipmentPage() {
         </div>
       </section>
 
-      <section className="px-4 py-12 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-          {Object.entries(groupedByCategory).map(([category, categoryItems]) => (
-            <div key={category} className="mb-12">
-              <Text as="h2" variant="title" tone="purple" align="center" size="2xl" className="mb-6">
-                {category}
-              </Text>
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {categoryItems.map((item) => {
-                  const officialUrl = item.productUrl || item.url;
-                  const cardBackground = item.cardColor ?? equipmentCardBackground;
-                  const isCardNavy = cardBackground === 'navy';
-                  return (
-                    <Card key={item.id} variant="equipment" equipmentBackground={cardBackground} equipmentFontSize={equipmentFontSize}>
-                      {item.image ? (
-                        <div className="relative h-40 bg-slate-100 dark:bg-slate-900 overflow-hidden p-3">
-                          <Image src={item.image} alt={item.name ?? item.model} fill unoptimized className="object-contain group-hover/card:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" />
-                        </div>
-                      ) : (
-                        <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
-                          <div className="text-3xl">{item.icon}</div>
-                        </div>
-                      )}
+       <section className="px-4 py-12 sm:px-6 lg:px-8">
+         <div className="max-w-6xl mx-auto">
+           {Object.entries(groupedByCategory).map(([category, categoryItems]) => {
+             const useCarousel = categoryItems.length >= 3;
 
-                      <CardHeader className="p-4 pb-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-2xl flex-shrink-0">{item.icon}</span>
-                            <div className="min-w-0">
-                              <Text as="h3" variant="title" className={`font-semibold leading-tight ${isCardNavy ? 'text-white' : 'text-slate-900 dark:text-white'} ${equipmentTypography[equipmentFontSize].title}`}>
-                                {item.model}
-                              </Text>
-                              <Text as="p" variant="caption" className={`${isCardNavy ? 'text-slate-200' : 'text-slate-600 dark:text-slate-400'} truncate ${equipmentTypography[equipmentFontSize].subtitle}`}>
-                                {item.brand}
-                              </Text>
-                            </div>
-                          </div>
-                          <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full flex-shrink-0 ${conditionClassMap[item.condition]}`}>{item.condition}</span>
-                        </div>
-                      </CardHeader>
+             const renderCard = (item: EquipmentItem) => {
+               const officialUrl = item.productUrl || item.url;
+               const cardBackground = item.cardColor ?? equipmentCardBackground;
+               const isCardNavy = cardBackground === 'navy';
+               return (
+                 <Card key={item.id} variant="equipment" equipmentBackground={cardBackground} equipmentFontSize={equipmentFontSize} className="h-full flex flex-col">
+                   {item.image ? (
+                     <div className="relative h-40 bg-slate-100 dark:bg-slate-900 overflow-hidden p-3">
+                       <Image src={item.image} alt={item.name ?? item.model} fill unoptimized className="object-contain group-hover/card:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" />
+                     </div>
+                   ) : (
+                     <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
+                       <div className="text-3xl">{item.icon}</div>
+                     </div>
+                   )}
 
-                      <CardContent className="p-4 pt-0 space-y-3">
-                        <Divider tone="purple" size="sm" iconType="default" containerClassName="px-0 py-0" className="gap-2" />
-                        <Text as="p" variant="body" className={`${isCardNavy ? 'text-slate-200' : 'text-slate-600 dark:text-slate-400'} leading-relaxed ${equipmentTypography[equipmentFontSize].body}`}>
-                          {item.description}
-                        </Text>
-                        <div className="grid grid-cols-2 gap-2 text-xs pt-1">
-                          <div>
-                            <Text as="p" variant="caption" className={`${isCardNavy ? 'text-slate-300' : 'text-slate-500 dark:text-slate-500'} ${equipmentTypography[equipmentFontSize].label}`}>
-                              Anno Acquisto
-                            </Text>
-                            <Text as="p" variant="body" weight="semibold" className={`${isCardNavy ? 'text-white' : 'text-slate-900 dark:text-white'} ${equipmentTypography[equipmentFontSize].value}`}>
-                              {item.year}
-                            </Text>
-                          </div>
-                          {item.km ? (
-                            <div>
-                              <Text as="p" variant="caption" className={`${isCardNavy ? 'text-slate-300' : 'text-slate-500 dark:text-slate-500'} ${equipmentTypography[equipmentFontSize].label}`}>
-                                Km/Usi
-                              </Text>
-                              <Text as="p" variant="body" weight="semibold" className={`${isCardNavy ? 'text-white' : 'text-slate-900 dark:text-white'} ${equipmentTypography[equipmentFontSize].value}`}>
-                                {item.km}
-                              </Text>
-                            </div>
-                          ) : null}
+                   <CardHeader className="p-4 pb-2">
+                     <div className="flex items-start justify-between gap-2">
+                       <div className="flex items-center gap-2 min-w-0">
+                         <span className="text-2xl flex-shrink-0">{item.icon}</span>
+                         <div className="min-w-0">
+                           <Text as="h3" variant="title" className={`font-semibold leading-tight ${isCardNavy ? 'text-white' : 'text-slate-900 dark:text-white'} ${equipmentTypography[equipmentFontSize].title}`}>
+                             {item.model}
+                           </Text>
+                           <Text as="p" variant="caption" className={`${isCardNavy ? 'text-slate-200' : 'text-slate-600 dark:text-slate-400'} truncate ${equipmentTypography[equipmentFontSize].subtitle}`}>
+                             {item.brand}
+                           </Text>
+                         </div>
+                       </div>
+                       <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full flex-shrink-0 ${conditionClassMap[item.condition]}`}>{item.condition}</span>
+                     </div>
+                   </CardHeader>
+
+                   <CardContent className="p-4 pt-0 space-y-3 flex flex-1 flex-col">
+                     <Divider tone="purple" size="sm" iconType="default" containerClassName="px-0 py-0" className="gap-2" />
+                     <Text as="p" variant="body" className={`${isCardNavy ? 'text-slate-200' : 'text-slate-600 dark:text-slate-400'} leading-relaxed ${equipmentTypography[equipmentFontSize].body}`}>
+                       {item.description}
+                     </Text>
+                     <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                       <div>
+                         <Text as="p" variant="caption" className={`${isCardNavy ? 'text-slate-300' : 'text-slate-500 dark:text-slate-500'} ${equipmentTypography[equipmentFontSize].label}`}>
+                           Anno Acquisto
+                         </Text>
+                         <Text as="p" variant="body" weight="semibold" className={`${isCardNavy ? 'text-white' : 'text-slate-900 dark:text-white'} ${equipmentTypography[equipmentFontSize].value}`}>
+                           {item.year}
+                         </Text>
+                       </div>
+                       {item.km ? (
+                         <div>
+                           <Text as="p" variant="caption" className={`${isCardNavy ? 'text-slate-300' : 'text-slate-500 dark:text-slate-500'} ${equipmentTypography[equipmentFontSize].label}`}>
+                             Km/Usi
+                           </Text>
+                           <Text as="p" variant="body" weight="semibold" className={`${isCardNavy ? 'text-white' : 'text-slate-900 dark:text-white'} ${equipmentTypography[equipmentFontSize].value}`}>
+                             {item.km}
+                           </Text>
+                         </div>
+                       ) : null}
+                     </div>
+                     {officialUrl ? (
+                       <div className="pt-2 mt-auto flex justify-center">
+                         <Button asChild variant="outline" tone="purple" size="default" width="auto">
+                           <a href={officialUrl} target="_blank" rel="noopener noreferrer" title={item.productDescription || 'Vai alla scheda ufficiale del prodotto'}>
+                             Product Description →
+                           </a>
+                         </Button>
+                       </div>
+                     ) : null}
+                   </CardContent>
+                 </Card>
+               );
+             };
+
+             return (
+               <div key={category} className="mb-12">
+                 <Text as="h2" variant="title" tone="purple" align="center" size="2xl" className="mb-6">
+                   {category}
+                 </Text>
+                  {useCarousel ? (
+                    <CarouselCards
+                      cardsPerView={{ base: 1, md: 2, lg: 3 }}
+                      focusCenterSlide
+                      gap="md"
+                      showControls
+                      showDots
+                      arrowsPositionMobile="top-right"
+                      contentClassName="py-5 sm:py-6"
+                    >
+                      {categoryItems.map((item) => renderCard(item))}
+                    </CarouselCards>
+                  ) : (
+                    <div className={categoryItems.length === 1 ? 'mx-auto grid w-full max-w-[24rem] grid-cols-1 justify-items-center gap-5' : 'mx-auto grid w-full max-w-4xl grid-cols-1 sm:grid-cols-2 items-stretch gap-5'}>
+                      {categoryItems.map((item) => (
+                        <div key={item.id} className="w-full max-w-[24rem] mx-auto h-full">
+                          {renderCard(item)}
                         </div>
-                        {officialUrl ? (
-                          <div className="pt-2 flex justify-center">
-                            <Button asChild variant="outline" tone="purple" size="default" width="auto">
-                              <a href={officialUrl} target="_blank" rel="noopener noreferrer" title={item.productDescription || 'Vai alla scheda ufficiale del prodotto'}>
-                                Product Description →
-                              </a>
-                            </Button>
-                          </div>
-                        ) : null}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+                      ))}
+                    </div>
+                  )}
+               </div>
+             );
+           })}
+         </div>
+       </section>
     </PageShell>
   );
 }
