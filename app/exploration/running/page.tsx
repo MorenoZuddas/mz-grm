@@ -527,7 +527,7 @@ export default function RunningPage() {
            {/* Action links - Attrezzatura & FIDAL */}
            <div className="absolute top-6 right-6 sm:right-10 hidden sm:flex flex-col gap-4 z-10 run-action-links-2">
              <Link
-               href="/exploration/running/equipment"
+               href="/exploration/equipment?focus=running#section-running"
                className="inline-flex items-center gap-1.5 text-white/75 hover:text-white text-sm font-medium transition run-equipment-link-2"
                data-testid="run-equipment-link-2"
              >
@@ -709,7 +709,7 @@ export default function RunningPage() {
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Scarpe, abbigliamento e accessori</p>
               </div>
               <Link
-                href="/exploration/running/equipment"
+                href="/exploration/equipment?focus=running#section-running"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 dark:bg-slate-700 text-white text-sm font-medium hover:bg-black dark:hover:bg-slate-600 transition-colors"
               >
                 Attrezzatura

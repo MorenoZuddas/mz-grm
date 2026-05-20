@@ -291,7 +291,7 @@ export default function TrekkingPage() {
         </Link>
 
         <Link
-          href="/exploration/trekking/equipment"
+          href="/exploration/equipment?focus=trekking#section-trekking"
           className="absolute top-6 right-6 sm:right-10 hidden sm:inline-flex items-center gap-1.5 text-white/75 hover:text-white text-sm font-medium transition z-10 trek-equipment-link-2"
           data-testid="trek-equipment-link-2"
         >
@@ -399,7 +399,7 @@ export default function TrekkingPage() {
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Zaini, bastoncini e accessori</p>
             </div>
             <Link
-              href="/exploration/trekking/equipment"
+              href="/exploration/equipment?focus=trekking#section-trekking"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 dark:bg-slate-700 text-white text-sm font-medium hover:bg-black dark:hover:bg-slate-600 transition-colors"
             >
               Attrezzatura
