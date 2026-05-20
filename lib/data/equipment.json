@@ -10,7 +10,7 @@
       "description": "Scarpe versatili da running road con ammortizzazione reattiva. Ideali per allenamenti quotidiani e gare.",
       "icon": "👟",
       "condition": "Buono",
-      "image": "https://res.cloudinary.com/derbnvxif/image/upload/q_auto/f_auto/v1779261823/noosa_tri_16_n7ms2j.webp"
+      "image": "https://res.cloudinary.com/derbnvxif/image/upload/v1779269583/noosa_tri_16_Background_Removed_dabiq2.png"
     },
     {
       "id": "shoe-adidas-adistar",
@@ -22,7 +22,7 @@
       "description": "Scarpe running da strada con tecnologia Lightstrike. Perfette per allenamenti e competizioni.",
       "icon": "👟",
       "condition": "Buono",
-      "image": "https://res.cloudinary.com/derbnvxif/image/upload/q_auto/f_auto/v1779261823/adistar_3_hlpmbi.jpg"
+      "image": "https://res.cloudinary.com/derbnvxif/image/upload/v1779269576/adistar_3_Background_Removed_eyi1dm.png"
     },
     {
       "id": "shoe-kiprun-kd500",
@@ -34,7 +34,7 @@
       "description": "Scarpe running leggere con buona ammortizzazione. Ideali per allenamenti quotidiani e trail moderato.",
       "icon": "👟",
       "condition": "Buono",
-      "image": "https://res.cloudinary.com/derbnvxif/image/upload/q_auto/f_auto/v1779261823/kiprun_kd500_3_kqxlco.jpg"
+      "image": "https://res.cloudinary.com/derbnvxif/image/upload/v1779269582/kiprun_kd500_3_Background_Removed_fprqqu.png"
     },
     {
       "id": "shoe-kiprun-ks500",
@@ -46,7 +46,7 @@
       "description": "Scarpe running stabili con supporto dell'arco plantare. Perfette per chi ha pronazione.",
       "icon": "👟",
       "condition": "Buono",
-      "image": "https://res.cloudinary.com/derbnvxif/image/upload/q_auto/f_auto/v1779261825/kiprun_ks_500_2_i3mwa1.jpg"
+      "image": "https://res.cloudinary.com/derbnvxif/image/upload/v1779269579/kiprun_ks_500_2_Background_Removed_ubrabx.png"
     },
     {
       "id": "shoe-adidas-boston",
@@ -58,7 +58,7 @@
       "description": "Scarpe running da gara leggere e reattive. Perfette per competizioni e allenamenti veloci.",
       "icon": "👟",
       "condition": "Buono",
-      "image": "https://res.cloudinary.com/derbnvxif/image/upload/q_auto/f_auto/v1779261822/adizero_boston_13_cu5aky.jpg"
+      "image": "https://res.cloudinary.com/derbnvxif/image/upload/v1779269576/adizero_boston_13_Background_Removed_kvzcsm.png"
     },
     {
       "id": "watch-garmin-fenix",
@@ -70,7 +70,7 @@
       "description": "Orologio sportivo multisport con GPS. Traccia running, nuoto, ciclismo con metriche avanzate.",
       "icon": "⌚",
       "condition": "Nuovo",
-      "image": "https://res.cloudinary.com/derbnvxif/image/upload/q_auto/f_auto/v1779265557/fenix_7_tnapw9.jpg"
+      "image": "https://res.cloudinary.com/derbnvxif/image/upload/v1779269578/fenix_7_Background_Removed_zqpzg5.png"
     },
     {
       "id": "backpack-crivit",
@@ -82,7 +82,7 @@
       "description": "Zaino leggero da running con borraccia integrata. Comodo per allenamenti e corse su strada.",
       "icon": "🎒",
       "condition": "Nuovo",
-      "image": "https://res.cloudinary.com/derbnvxif/image/upload/q_auto/f_auto/v1779266108/gilet_running_crivit_mmzhfp.webp"
+      "image": "https://res.cloudinary.com/derbnvxif/image/upload/v1779269580/gilet_running_crivit_Background_Removed_feqt3p.png"
     }
   ],
   "trekking": [
