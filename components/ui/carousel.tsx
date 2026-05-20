@@ -472,10 +472,10 @@ function CarouselCards<TItem>({
     ? arrowVisibilityClasses("sides", mobilePos, arrowsPosition)
     : "hidden"
 
-  const resolvedOpts = {
-    align: (focusCenterSlide ? "center" : "start") as const,
-    ...(focusCenterSlide ? { loop: true as const } : {}),
+  const resolvedOpts: CarouselOptions = {
     ...opts,
+    align: focusCenterSlide ? "center" : (opts?.align ?? "start"),
+    ...(focusCenterSlide ? { loop: true } : {}),
   }
 
   const carouselNode = (
