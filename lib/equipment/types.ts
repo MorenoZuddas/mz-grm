@@ -1,5 +1,6 @@
 export type EquipmentCondition = 'Nuovo' | 'Buono' | 'Usurato';
 export type EquipmentCardColor = 'default' | 'soft' | 'sky' | 'glass' | 'navy';
+export type EquipmentSection = 'running' | 'trekking';
 
 export interface EquipmentItem {
   id: string;

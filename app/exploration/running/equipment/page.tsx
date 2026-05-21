@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import equipmentData from '@/lib/data/equipment.json';
+import { getEquipmentBySection } from '@/lib/data/equipment';
 import { hydrateEquipmentFromCloudinary } from '@/lib/cloudinary/equipment';
 import type { EquipmentItem } from '@/lib/equipment/types';
 import { Divider, PageShell, Text } from '@/components/generic';
@@ -44,7 +44,7 @@ const equipmentTypography = {
 } as const;
 
 export default async function RunningEquipmentPage() {
-  const items = await hydrateEquipmentFromCloudinary(equipmentData.running);
+  const items = await hydrateEquipmentFromCloudinary(getEquipmentBySection('running'));
   const visibleItems = items.filter((item) => item.visible !== false);
   const groupedByCategory = visibleItems.reduce<Record<string, EquipmentItem[]>>((acc, item) => {
     if (!acc[item.category]) acc[item.category] = [];
