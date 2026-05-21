@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils"
 
 type Tone = "current" | "blue" | "purple" | "black"
 type HeroAlign = "center" | "left" | "right"
-type CardVariant = "default" | "horizontal" | "vertical"
+type CardVariant = "default" | "horizontal" | "vertical" | "equipment"
 type CardSize = "sm" | "md" | "lg"
 
 const BTN_VARIANTS: ButtonVariant[] = ["default", "destructive", "outline", "secondary", "ghost", "link"]
@@ -46,7 +46,7 @@ const BTN_SIZES: ButtonSize[] = ["xs", "sm", "default", "lg", "xl", "icon"]
 const CAROUSEL_ARROW_POSITIONS: ArrowsPosition[] = ["top-right", "sides"]
 const CAROUSEL_ACCENT_COLORS = ["text-blue-300", "text-emerald-300", "text-violet-300", "text-amber-300", "text-rose-300"] as const
 const CAROUSEL_IMAGE_HEIGHTS = ["h-[16rem]", "h-[18rem]", "h-[20rem]", "h-[22rem]"] as const
-const CARD_VARIANTS: CardVariant[] = ["default", "horizontal", "vertical"]
+const CARD_VARIANTS: CardVariant[] = ["default", "horizontal", "vertical", "equipment"]
 const CARD_TONES: Tone[] = ["current", "blue", "purple", "black"]
 const CARD_COLORS: CardTone[] = ["current", "blue", "purple", "black", "navy", "crimson", "pear"]
 const CARD_SIZES: CardSize[] = ["sm", "md", "lg"]
@@ -823,8 +823,96 @@ function CardSection() {
   const [b2t, setB2t] = useState<ButtonTone>("current")
   const [dataName, setDataName] = useState("storybook-card")
   const [customClass, setCustomClass] = useState("")
+  const [equipmentName, setEquipmentName] = useState("ASICS Noosa Tri 16")
+  const [equipmentBrand, setEquipmentBrand] = useState("ASICS")
+  const [equipmentModel, setEquipmentModel] = useState("Noosa Tri 16")
+  const [equipmentDescription, setEquipmentDescription] = useState("Scarpe versatili da running road con ammortizzazione reattiva. Ideali per allenamenti quotidiani e gare.")
+  const [equipmentYear, setEquipmentYear] = useState("2024")
+  const [equipmentCondition, setEquipmentCondition] = useState<"Nuovo" | "Buono" | "Usurato">("Buono")
+  const [equipmentIcon, setEquipmentIcon] = useState("👟")
+  const [equipmentLink, setEquipmentLink] = useState("https://example.com/product")
+  const [equipmentKm, setEquipmentKm] = useState("320")
+  const [showEquipmentKm, setShowEquipmentKm] = useState(true)
+  const [equipmentImage, setEquipmentImage] = useState("https://res.cloudinary.com/derbnvxif/image/upload/q_auto/f_auto/v1779261823/noosa_tri_16_n7ms2j.webp")
+  const [showEquipmentImage, setShowEquipmentImage] = useState(true)
+  const [equipmentBackground, setEquipmentBackground] = useState<"default" | "soft" | "sky" | "glass" | "navy">("sky")
+  const [equipmentFontSize, setEquipmentFontSize] = useState<"small" | "medium" | "large">("medium")
+  const [equipmentCardSize, setEquipmentCardSize] = useState<CardSize>("md")
+  const [equipmentButtonVariant, setEquipmentButtonVariant] = useState<ButtonVariant>("outline")
+  const [equipmentButtonTone, setEquipmentButtonTone] = useState<ButtonTone>("blue")
+  const [equipmentButtonSize, setEquipmentButtonSize] = useState<ButtonSize>("default")
+  const [equipmentDividerTone, setEquipmentDividerTone] = useState<Tone>("blue")
+  const equipmentTypography = {
+    small: { title: "text-sm", subtitle: "text-[11px]", body: "text-[11px]", label: "text-[11px]", value: "text-sm" },
+    medium: { title: "text-base", subtitle: "text-xs", body: "text-xs", label: "text-xs", value: "text-base" },
+    large: { title: "text-lg", subtitle: "text-sm", body: "text-sm", label: "text-sm", value: "text-lg" },
+  } as const
+  const conditionClassMap = {
+    Nuovo: "bg-[var(--color-comp-equipment-condition-new-bg)] text-[var(--color-comp-equipment-condition-new-text)]",
+    Buono: "bg-[var(--color-comp-equipment-condition-good-bg)] text-[var(--color-comp-equipment-condition-good-text)]",
+    Usurato: "bg-[var(--color-comp-equipment-condition-used-bg)] text-[var(--color-comp-equipment-condition-used-text)]",
+  } as const
+  const isEquipmentNavy = equipmentBackground === "navy"
   const isLeftImage = withImage && variant !== "horizontal" && imagePos === "left"
-  const body = (
+  const body = variant === "equipment" ? (
+    <Card
+      variant="equipment"
+      size={equipmentCardSize}
+      equipmentBackground={equipmentBackground}
+      equipmentFontSize={equipmentFontSize}
+      dataName={dataName || undefined}
+      className={customClass || undefined}
+    >
+      {showEquipmentImage ? (
+        <div className={cn("relative h-40 overflow-hidden p-3", isEquipmentNavy ? "bg-slate-800" : "bg-slate-100 dark:bg-slate-900")}>
+          <img src={equipmentImage} alt={equipmentName || equipmentModel} className="h-full w-full object-contain transition-transform duration-300 group-hover/card:scale-105" />
+        </div>
+      ) : (
+        <div className={cn("h-40 flex items-center justify-center", isEquipmentNavy ? "bg-gradient-to-br from-slate-800 to-slate-950" : "bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800")}>
+          <div className="text-3xl">{equipmentIcon}</div>
+        </div>
+      )}
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-2xl flex-shrink-0">{equipmentIcon}</span>
+            <div className="min-w-0">
+              <CardTitle className={cn("font-semibold leading-tight", isEquipmentNavy ? "text-white" : "text-slate-900 dark:text-white", equipmentTypography[equipmentFontSize].title)}>{equipmentModel}</CardTitle>
+              <p className={cn("truncate", isEquipmentNavy ? "text-slate-200" : "text-slate-600 dark:text-slate-400", equipmentTypography[equipmentFontSize].subtitle)}>{equipmentBrand}</p>
+            </div>
+          </div>
+          <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full flex-shrink-0 ${conditionClassMap[equipmentCondition]}`}>{equipmentCondition}</span>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0 space-y-3">
+        <Divider tone={equipmentDividerTone} size="sm" iconType="default" containerClassName="px-0 py-0" className="gap-2" />
+        <p className={cn("leading-relaxed", isEquipmentNavy ? "text-slate-200" : "text-slate-600 dark:text-slate-400", equipmentTypography[equipmentFontSize].body)}>{equipmentDescription}</p>
+        <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+          <div>
+            <p className={cn(isEquipmentNavy ? "text-slate-300" : "text-slate-500 dark:text-slate-500", equipmentTypography[equipmentFontSize].label)}>Anno Acquisto</p>
+            <p className={cn("font-semibold", isEquipmentNavy ? "text-white" : "text-slate-900 dark:text-white", equipmentTypography[equipmentFontSize].value)}>{equipmentYear}</p>
+          </div>
+          {showEquipmentKm ? (
+            <div>
+              <p className={cn(isEquipmentNavy ? "text-slate-300" : "text-slate-500 dark:text-slate-500", equipmentTypography[equipmentFontSize].label)}>Km/Usi</p>
+              <p className={cn("font-semibold", isEquipmentNavy ? "text-white" : "text-slate-900 dark:text-white", equipmentTypography[equipmentFontSize].value)}>{equipmentKm}</p>
+            </div>
+          ) : null}
+        </div>
+        <div className="pt-2">
+          <Button
+            asChild
+            variant={equipmentButtonVariant}
+            tone={equipmentButtonTone}
+            size={equipmentButtonSize}
+            width="auto"
+          >
+            <a href={equipmentLink} target="_blank" rel="noreferrer">Product Description →</a>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  ) : (
     <Card
       variant={variant}
       tone={tone}
@@ -861,15 +949,34 @@ function CardSection() {
         <Panel>
           <div className="grid gap-2">
             <Ctl label="variant" value={variant} options={CARD_VARIANTS} onChange={setVariant} />
-            <Ctl label="tone" value={tone} options={CARD_COLORS} onChange={setTone} />
-            <Ctl label="size" value={size} options={CARD_SIZES} onChange={setSize} />
-            {variant !== "horizontal" ? <Ctl label="image position" value={imagePos} options={["top", "left"]} onChange={setImagePos} /> : null}
-            <Toggle label="show image" checked={withImage} onChange={setWithImage} />
+            {variant !== "equipment" ? <Ctl label="tone" value={tone} options={CARD_COLORS} onChange={setTone} /> : null}
+            {variant !== "equipment" ? <Ctl label="size" value={size} options={CARD_SIZES} onChange={setSize} /> : null}
+            {variant !== "horizontal" && variant !== "equipment" ? <Ctl label="image position" value={imagePos} options={["top", "left"]} onChange={setImagePos} /> : null}
+            {variant !== "equipment" ? <Toggle label="show image" checked={withImage} onChange={setWithImage} /> : null}
+            {variant === "equipment" ? <Toggle label="show image" checked={showEquipmentImage} onChange={setShowEquipmentImage} /> : null}
+            {variant === "equipment" ? <Ctl label="card size" value={equipmentCardSize} options={CARD_SIZES} onChange={(v) => setEquipmentCardSize(v as CardSize)} /> : null}
+            {variant === "equipment" ? <Ctl label="background" value={equipmentBackground} options={["default", "soft", "sky", "glass", "navy"]} onChange={(v) => setEquipmentBackground(v as "default" | "soft" | "sky" | "glass" | "navy")} /> : null}
+            {variant === "equipment" ? <Ctl label="font size" value={equipmentFontSize} options={["small", "medium", "large"]} onChange={(v) => setEquipmentFontSize(v as "small" | "medium" | "large")} /> : null}
             <Toggle label="animated section" checked={animated} onChange={setAnimated} />
-            <Ctl label="btn1 variant" value={b1v} options={BTN_VARIANTS} onChange={setB1v} />
-            <Ctl label="btn1 tone" value={b1t} options={BTN_TONES} onChange={setB1t} />
-            <Ctl label="btn2 variant" value={b2v} options={BTN_VARIANTS} onChange={setB2v} />
-            <Ctl label="btn2 tone" value={b2t} options={BTN_TONES} onChange={setB2t} />
+            {variant !== "equipment" ? <Ctl label="btn1 variant" value={b1v} options={BTN_VARIANTS} onChange={setB1v} /> : null}
+            {variant !== "equipment" ? <Ctl label="btn1 tone" value={b1t} options={BTN_TONES} onChange={setB1t} /> : null}
+            {variant !== "equipment" ? <Ctl label="btn2 variant" value={b2v} options={BTN_VARIANTS} onChange={setB2v} /> : null}
+            {variant !== "equipment" ? <Ctl label="btn2 tone" value={b2t} options={BTN_TONES} onChange={setB2t} /> : null}
+            {variant === "equipment" ? <TxtCtl label="name" value={equipmentName} onChange={setEquipmentName} /> : null}
+            {variant === "equipment" ? <TxtCtl label="brand" value={equipmentBrand} onChange={setEquipmentBrand} /> : null}
+            {variant === "equipment" ? <TxtCtl label="model" value={equipmentModel} onChange={setEquipmentModel} /> : null}
+            {variant === "equipment" ? <TxtCtl label="description" value={equipmentDescription} onChange={setEquipmentDescription} /> : null}
+            {variant === "equipment" ? <TxtCtl label="year" value={equipmentYear} onChange={setEquipmentYear} /> : null}
+            {variant === "equipment" ? <Ctl label="condition" value={equipmentCondition} options={["Nuovo", "Buono", "Usurato"]} onChange={(v) => setEquipmentCondition(v as "Nuovo" | "Buono" | "Usurato")} /> : null}
+            {variant === "equipment" ? <TxtCtl label="icon" value={equipmentIcon} onChange={setEquipmentIcon} /> : null}
+            {variant === "equipment" ? <TxtCtl label="product link" value={equipmentLink} onChange={setEquipmentLink} /> : null}
+            {variant === "equipment" ? <Ctl label="button variant" value={equipmentButtonVariant} options={BTN_VARIANTS} onChange={(v) => setEquipmentButtonVariant(v as ButtonVariant)} /> : null}
+            {variant === "equipment" ? <Ctl label="button tone" value={equipmentButtonTone} options={BTN_TONES} onChange={(v) => setEquipmentButtonTone(v as ButtonTone)} /> : null}
+            {variant === "equipment" ? <Ctl label="button size" value={equipmentButtonSize} options={["sm", "default", "lg"] as ButtonSize[]} onChange={(v) => setEquipmentButtonSize(v as ButtonSize)} /> : null}
+            {variant === "equipment" ? <Ctl label="divider tone" value={equipmentDividerTone} options={CARD_TONES} onChange={(v) => setEquipmentDividerTone(v as Tone)} /> : null}
+            {variant === "equipment" ? <Toggle label="show km/usi" checked={showEquipmentKm} onChange={setShowEquipmentKm} /> : null}
+            {variant === "equipment" ? <TxtCtl label="km/usi" value={equipmentKm} onChange={setEquipmentKm} /> : null}
+            {variant === "equipment" ? <TxtCtl label="image url" value={equipmentImage} onChange={setEquipmentImage} placeholder="https://..." /> : null}
             <label className="flex flex-col gap-1 text-xs">
               <span className="uppercase tracking-wider text-slate-400 font-semibold">dataName</span>
               <input value={dataName} onChange={(e) => setDataName(e.target.value)} className="h-8 px-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800" />
@@ -890,12 +997,31 @@ function CardSection() {
         <PropsLegend
           items={[
             { prop: "variant", values: [...CARD_VARIANTS] },
-            { prop: "tone", values: [...CARD_COLORS] },
-            { prop: "size", values: [...CARD_SIZES] },
-            { prop: "imagePos", values: ["top", "left"] },
-            { prop: "CardMedia", values: ["slot immagine per horizontal"] },
-            { prop: "button.variant", values: [...BTN_VARIANTS] },
-            { prop: "button.tone", values: [...BTN_TONES] },
+                ...(variant !== "equipment" ? [{ prop: "tone", values: [...CARD_COLORS] }] : []),
+                ...(variant !== "equipment" ? [{ prop: "size", values: [...CARD_SIZES] }] : []),
+                ...(variant !== "equipment" ? [{ prop: "imagePos", values: ["top", "left"] }] : []),
+                ...(variant !== "equipment" ? [{ prop: "CardMedia", values: ["slot immagine per horizontal"] }] : []),
+                ...(variant !== "equipment" ? [{ prop: "button.variant", values: [...BTN_VARIANTS] }] : []),
+                ...(variant !== "equipment" ? [{ prop: "button.tone", values: [...BTN_TONES] }] : []),
+                ...(variant === "equipment" ? [
+                  { prop: "equipment.name", values: ["string"] },
+                  { prop: "equipment.brand", values: ["string"] },
+                  { prop: "equipment.model", values: ["string"] },
+                  { prop: "equipment.description", values: ["string"] },
+                  { prop: "equipment.size", values: ["sm", "md", "lg"] },
+                  { prop: "equipment.background", values: ["default", "soft", "sky", "glass", "navy"] },
+                  { prop: "equipment.fontSize", values: ["small", "medium", "large"] },
+                  { prop: "equipment.year", values: ["string | number"] },
+                  { prop: "equipment.condition", values: ["Nuovo", "Buono", "Usurato"] },
+                  { prop: "equipment.icon", values: ["emoji/string"] },
+                  { prop: "equipment.image", values: ["url"] },
+                  { prop: "equipment.km", values: ["string | number"] },
+                  { prop: "equipment.productUrl", values: ["url"] },
+                  { prop: "equipment.button.variant", values: [...BTN_VARIANTS] },
+                  { prop: "equipment.button.tone", values: [...BTN_TONES] },
+                  { prop: "equipment.button.size", values: ["sm", "default", "lg"] },
+                  { prop: "equipment.divider.tone", values: [...CARD_TONES] },
+                ] : []),
             { prop: "dataName", values: ["string"] },
             { prop: "className", values: ["string"] },
           ]}

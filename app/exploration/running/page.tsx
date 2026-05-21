@@ -658,7 +658,7 @@ export default function RunningPage() {
                  items={activityGridItems}
                  columnsClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
                  sectionClassName="px-0 py-0 bg-transparent"
-                 cardClassName="border-slate-300/80 bg-white dark:border-slate-500/90 dark:border-2 dark:bg-slate-950/40"
+                 cardClassName="bg-white dark:bg-slate-950/40"
                  useMotion={false}
                  showDate
                  showTypeBadge={false}
@@ -677,6 +677,12 @@ export default function RunningPage() {
                  activityPhotoBadgeSize="medium"
                  activityPhotoBadgeRounded={false}
                  activityTextColor="black"
+                 cardHeight="small"
+                 centerCardContent
+                 showCenterBar
+                 centerBarColor="purple"
+
+                 customBorderColor="navy"
                  onItemClick={(item) => handleActivityClick(item.id)}
                  onLoadMore={handleLoadMore}
                  isLoadingMore={loadingMore}

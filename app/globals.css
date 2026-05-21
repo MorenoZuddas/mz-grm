@@ -109,8 +109,8 @@
   --color-comp-badge-trip-text: #7c2d12;
   --color-comp-badge-books-bg: var(--color-role-surface-muted);
   --color-comp-badge-books-text: var(--color-role-text-primary);
-  --color-comp-badge-photo-bg: #fee2e2;
-  --color-comp-badge-photo-text: #b91c1c;
+  --color-comp-badge-photo-bg: var(--color-comp-tone-purple-border);
+  --color-comp-badge-photo-text: var(--color-tone-purple-title);
   --color-comp-badge-music-bg: var(--color-role-surface-muted);
   --color-comp-badge-music-text: var(--color-role-text-primary);
 
@@ -514,8 +514,8 @@
     --color-comp-badge-trip-text: #fed7aa;
     --color-comp-badge-books-bg: #1e293b;
     --color-comp-badge-books-text: #e2e8f0;
-    --color-comp-badge-photo-bg: #991b1b66;
-    --color-comp-badge-photo-text: #fca5a5;
+    --color-comp-badge-photo-bg: #4c1d95;
+    --color-comp-badge-photo-text: #c4b5fd;
     --color-comp-badge-music-bg: #1e293b;
     --color-comp-badge-music-text: #e2e8f0;
 
