@@ -219,6 +219,24 @@ export default function AboutPage() {
                 <ContactIcon key={type} type={type} href={aboutSocialLinks[type] ?? '#'} />
               ))}
             </div>
+
+            <div className="mt-6 border-t border-slate-200 dark:border-slate-700 pt-6">
+              <Text as="p" variant="body" className="text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
+                Se vuoi supportare il mio lavoro, la mia passione o l&apos;acquisto di attrezzatura sportiva, puoi contribuire alla colletta.
+              </Text>
+              <div className="mt-4">
+                <a
+                  href="https://www.paypal.com/pool/9rgt9FR7Or?sr=wccr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-200 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  style={{ backgroundColor: '#0070ba' }}
+                  data-testid="about-paypal-donate-button"
+                >
+                  💙 Dona su PayPal
+                </a>
+              </div>
+            </div>
           </section>
         </AnimatedSection>
       </div>

@@ -190,6 +190,30 @@ export default function Home() {
           </p>
         </div>
       </AnimatedSection>
+
+      <Divider color="current" size="sm" data-testid="hp-divider-11" />
+
+      {/* Support Section */}
+      <AnimatedSection className="px-4 py-10 sm:px-6 lg:px-8 hp-support-11" data-testid="hp-support-11">
+        <div className="max-w-4xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-6 sm:p-8 text-center hp-support-box-11" data-testid="hp-support-box-11">
+          <p className="text-xs font-semibold tracking-[0.2em] uppercase text-slate-500 dark:text-slate-400 hp-support-label-11" data-testid="hp-support-label-11">
+            Supporta il progetto
+          </p>
+          <h2 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white hp-support-title-11" data-testid="hp-support-title-11">
+            Ti piace quello che faccio?
+          </h2>
+          <p className="mt-3 text-slate-600 dark:text-slate-300 hp-support-description-11" data-testid="hp-support-description-11">
+            Se vuoi supportare il mio lavoro, la mia passione o l&apos;acquisto di attrezzatura sportiva, puoi contribuire alla colletta.
+          </p>
+          <div className="mt-6">
+            <Button asChild size="default" radius="lg" className="bg-[#0070ba] hover:bg-[#005ea6] text-white hp-support-button-11" data-testid="hp-support-button-11">
+              <Link href="https://www.paypal.com/pool/9rgt9FR7Or?sr=wccr" target="_blank" rel="noopener noreferrer">
+                💙 Dona su PayPal
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </AnimatedSection>
     </PageShell>
   );
 }
