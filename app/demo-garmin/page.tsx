@@ -55,6 +55,13 @@ interface FloatingNotice {
   tone: 'success';
 }
 
+interface ApiResponseEnvelope<TData = unknown> {
+  status?: string;
+  message?: string;
+  error?: string;
+  data?: TData;
+}
+
 const NO_STORE_GET = {
   cache: 'no-store' as const,
   headers: {
@@ -62,8 +69,111 @@ const NO_STORE_GET = {
   },
 };
 
+const MAX_UPLOAD_CHUNK_BYTES = 900_000;
+
+function extractActivitiesForUpload(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) {
+    return payload.flatMap((item) => {
+      if (item && typeof item === 'object') {
+        const wrapper = item as { summarizedActivitiesExport?: unknown[] };
+        if (Array.isArray(wrapper.summarizedActivitiesExport)) {
+          return wrapper.summarizedActivitiesExport;
+        }
+      }
+      return item !== null && typeof item === 'object' ? [item] : [];
+    });
+  }
+
+  if (payload && typeof payload === 'object') {
+    const wrapper = payload as { summarizedActivitiesExport?: unknown[] };
+    if (Array.isArray(wrapper.summarizedActivitiesExport)) {
+      return wrapper.summarizedActivitiesExport;
+    }
+    return [payload];
+  }
+
+  return [];
+}
+
+function toUtf8ByteLength(value: string): number {
+  return new TextEncoder().encode(value).length;
+}
+
+function splitActivitiesIntoChunks(activities: unknown[], maxChunkBytes: number): unknown[][] {
+  const chunks: unknown[][] = [];
+  let currentChunk: unknown[] = [];
+
+  for (const activity of activities) {
+    const candidate = [...currentChunk, activity];
+    const candidateSize = toUtf8ByteLength(JSON.stringify(candidate));
+
+    if (currentChunk.length > 0 && candidateSize > maxChunkBytes) {
+      chunks.push(currentChunk);
+      currentChunk = [activity];
+      continue;
+    }
+
+    currentChunk = candidate;
+  }
+
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk);
+  }
+
+  return chunks.length > 0 ? chunks : [activities];
+}
+
+function buildServerErrorMessage(status: number, rawBody: string): string {
+  const compactBody = rawBody.trim().replace(/\s+/g, ' ');
+  const snippet = compactBody.slice(0, 180);
+  return snippet.length > 0 ? `Errore server (${status}): ${snippet}` : `Errore server (${status})`;
+}
+
+async function parseApiEnvelope<TData = unknown>(response: Response): Promise<ApiResponseEnvelope<TData>> {
+  const rawBody = await response.text();
+  let envelope: ApiResponseEnvelope<TData> | null = null;
+
+  if (rawBody.trim().length > 0) {
+    try {
+      envelope = JSON.parse(rawBody) as ApiResponseEnvelope<TData>;
+    } catch {
+      if (!response.ok) {
+        throw new Error(buildServerErrorMessage(response.status, rawBody));
+      }
+      throw new Error('Risposta server non valida (JSON atteso)');
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      envelope?.message ||
+      envelope?.error ||
+      buildServerErrorMessage(response.status, rawBody)
+    );
+  }
+
+  return envelope ?? {};
+}
+
+async function uploadGarminChunk(payload: unknown): Promise<UploadResult> {
+  const response = await fetch('/api/activities/garmin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const envelope = await parseApiEnvelope<UploadResult>(response);
+
+  if (envelope.status !== 'success' || !envelope.data) {
+    throw new Error(envelope.message || envelope.error || 'Errore import');
+  }
+
+  return envelope.data;
+}
+
 export default function DemoGarminPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [activitiesTotal, setActivitiesTotal] = useState(0);
   const [loadingDB, setLoadingDB] = useState(false);
   const [loadingUpload, setLoadingUpload] = useState(false);
   const [loadingManual, setLoadingManual] = useState(false);
@@ -156,6 +266,11 @@ export default function DemoGarminPage() {
 
       const list: Activity[] = data.data.recent_activities || [];
       setActivities(list);
+      setActivitiesTotal(
+        typeof data?.data?.total_activities === 'number'
+          ? data.data.total_activities
+          : list.length
+      );
 
       if (!silent) {
         setDbMessage({ text: `✅ ${data.data.total_activities} attività caricate`, ok: true });
@@ -204,19 +319,44 @@ export default function DemoGarminPage() {
         throw new Error(`JSON non valido: ${errorMsg}`);
       }
 
-      const res = await fetch('/api/activities/garmin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(json),
-      });
-      const data = await res.json();
-      if (!res.ok || data.status !== 'success') {
-        throw new Error(data.message || data.error || 'Errore import');
+      const extractedActivities = extractActivitiesForUpload(json);
+      const payloads: unknown[] =
+        extractedActivities.length > 0
+          ? splitActivitiesIntoChunks(extractedActivities, MAX_UPLOAD_CHUNK_BYTES)
+          : [json];
+
+      const aggregated: UploadResult = {
+        total_processed: 0,
+        saved: 0,
+        duplicates_found_in_db: 0,
+        skipped: 0,
+        maintenance: {
+          total_duplicates_removed: 0,
+        },
+        errors: [],
+      };
+
+      for (const payload of payloads) {
+        const result = await uploadGarminChunk(payload);
+        aggregated.total_processed += result.total_processed ?? 0;
+        aggregated.saved += result.saved ?? 0;
+        aggregated.duplicates_found_in_db =
+          (aggregated.duplicates_found_in_db ?? 0) + (result.duplicates_found_in_db ?? 0);
+        aggregated.skipped += result.skipped ?? 0;
+        aggregated.maintenance = {
+          total_duplicates_removed:
+            (aggregated.maintenance?.total_duplicates_removed ?? 0) +
+            (result.maintenance?.total_duplicates_removed ?? 0),
+        };
+        if (result.errors && result.errors.length > 0) {
+          aggregated.errors = [...(aggregated.errors ?? []), ...result.errors];
+        }
       }
-      setUploadResult(data.data as UploadResult);
-      const removed = data.data?.maintenance?.total_duplicates_removed;
-      const duplicatesInDb = (data.data as UploadResult)?.duplicates_found_in_db ?? 0;
-      const skipped = (data.data as UploadResult)?.skipped ?? 0;
+
+      setUploadResult(aggregated);
+      const removed = aggregated.maintenance?.total_duplicates_removed;
+      const duplicatesInDb = aggregated.duplicates_found_in_db ?? 0;
+      const skipped = aggregated.skipped ?? 0;
       if ((typeof removed === 'number' && removed > 0) || skipped > 0 || duplicatesInDb > 0) {
         const totalDuplicates = (typeof removed === 'number' ? removed : 0) + skipped + duplicatesInDb;
         showFloatingNotice(`✅ Upload JSON: trovati/rimossi ${totalDuplicates} duplicati`);
@@ -227,6 +367,11 @@ export default function DemoGarminPage() {
       if (listRes.ok) {
         const list: Activity[] = listData.data.recent_activities || [];
         setActivities(list);
+        setActivitiesTotal(
+          typeof listData?.data?.total_activities === 'number'
+            ? listData.data.total_activities
+            : list.length
+        );
       }
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : '❌ File JSON non valido o errore server');
@@ -277,11 +422,13 @@ export default function DemoGarminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify([activity]),
       });
-      const result = await res.json();
-      if (!res.ok || result.status !== 'success') {
-        throw new Error(result.message || result.error || 'Errore salvataggio');
+      const envelope = await parseApiEnvelope<{
+        saved?: number;
+      }>(res);
+      if (envelope.status !== 'success' || !envelope.data) {
+        throw new Error(envelope.message || envelope.error || 'Errore salvataggio');
       }
-      setManualMessage({ text: `✅ Attività aggiunta (${result.data.saved} salvata)`, ok: true });
+      setManualMessage({ text: `✅ Attività aggiunta (${envelope.data.saved ?? 0} salvata)`, ok: true });
       setFormData({ name: '', type: 'running', date: new Date().toISOString().split('T')[0], distance: 0, duration: 0 });
       // Aggiorna lista silenziosamente
       const listRes = await fetch('/api/activities/garmin', NO_STORE_GET);
@@ -289,6 +436,11 @@ export default function DemoGarminPage() {
       if (listRes.ok) {
         const list: Activity[] = listData.data.recent_activities || [];
         setActivities(list);
+        setActivitiesTotal(
+          typeof listData?.data?.total_activities === 'number'
+            ? listData.data.total_activities
+            : list.length
+        );
       }
     } catch (error) {
       setManualMessage({ text: `❌ ${error instanceof Error ? error.message : 'Errore'}`, ok: false });
@@ -354,6 +506,8 @@ export default function DemoGarminPage() {
     return `${Math.floor(total / 60)}:${String(seconds).padStart(2, '0')}`;
   };
 
+  const displayedActivitiesCount = activitiesTotal > 0 ? activitiesTotal : activities.length;
+
   return (
     <PageShell background="navy" className="p-8 dg-main-1" data-testid="dg-main-1">
       {floatingNotice && (
@@ -414,7 +568,7 @@ export default function DemoGarminPage() {
             {dbStatus && (
               <div className="mt-3 p-3 bg-slate-800 rounded text-sm text-white dg-status-detail-2" data-testid="dg-status-detail-2">
                 <p className="font-semibold text-cyan-400 mb-1 dg-status-label-2">📊 DB Status:</p>
-                <p dg-status-activities-2>Attività: <span className="text-green-400 font-bold">{dbStatus.total_activities}</span></p>
+                <p data-testid="dg-status-activities-2">Attività: <span className="text-green-400 font-bold">{dbStatus.total_activities}</span></p>
                 <p>Sync logs: <span className="text-green-400 font-bold">{dbStatus.total_sync_logs}</span></p>
               </div>
             )}
@@ -515,7 +669,7 @@ export default function DemoGarminPage() {
         {/* Lista Attività */}
         <div className="bg-slate-700 rounded-lg p-6 shadow-xl dg-activities-panel-4" data-testid="dg-activities-panel-4">
           <div className="flex items-center justify-between mb-4 dg-activities-header-4">
-            <h2 className="text-2xl font-bold text-white dg-activities-title-4" data-testid="dg-activities-title-4">📋 Attività ({activities.length})</h2>
+            <h2 className="text-2xl font-bold text-white dg-activities-title-4" data-testid="dg-activities-title-4">📋 Attività ({displayedActivitiesCount})</h2>
             <button onClick={() => void handleLoadActivities()} disabled={loadingDB}
               className="bg-green-600 hover:bg-green-700 disabled:bg-gray-500 text-white font-bold py-2 px-4 rounded text-sm transition dg-activities-refresh-4"
               data-testid="dg-activities-refresh-4">
@@ -691,4 +845,3 @@ export default function DemoGarminPage() {
     </PageShell>
   );
 }
-
