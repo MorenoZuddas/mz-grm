@@ -26,7 +26,13 @@ Aggiornata: 2026-04-09
 2. `POST /api/activities/garmin` → conversione + dedup + upsert su DB
 3. `GET /api/activities/garmin` per refresh UI
 
-### Flusso 2 — Inserimento diretto nel DB
+### Flusso 2 — Sync server-side con GarminDB bridge
+1. Configura `GARMIN_USERNAME`, `GARMIN_PASSWORD` e `GARMIN_DB_CLI_PATH` lato server
+2. `POST /api/activities/garmin/sync` con header admin (`x-api-secret`) e body `{"mode":"latest"}` oppure `{"mode":"all"}`
+3. Il bridge esegue `garmindb_cli.py`, legge l'export attività e riusa la pipeline canonica MongoDB
+4. In alternativa usa `/demo-garmin-sync` per una sync one-shot con credenziali passate solo nella request
+
+### Flusso 3 — Inserimento diretto nel DB
 1. Inserisci documenti raw Garmin in `activities` (Atlas/Compass/shell)
 2. La UI legge via `GET /api/activities/garmin`, i dati vengono convertiti al volo
 3. La manutenzione elimina i doppioni fisici quando rilevati
@@ -70,6 +76,7 @@ I documenti vengono sempre salvati in formato **canonico**.
 | `/api/status` | GET | Stato generale (doc count, activities, wrapper) |
 | `/api/activities/garmin` | GET | Lista attività normalizzate |
 | `/api/activities/garmin` | POST | Import JSON Garmin (array, oggetto, o wrapper) |
+| `/api/activities/garmin/sync` | POST | Sync server-side via GarminDB bridge |
 | `/api/activities/garmin/deduplicate` | POST | Dedup manuale (dry-run/apply) |
 | `/api/activities/garmin/indexes` | POST | Gestione/sync indici |
 | `/api/activities/garmin/normalize` | POST | Normalizzazione storica |
@@ -79,6 +86,7 @@ I documenti vengono sempre salvati in formato **canonico**.
 | `/api/activities/all` | GET | Tutte le attività (multi-source) |
 | `/api/activities/[id]` | GET | Dettaglio singola attività |
 | `/demo-garmin` | GET | Pagina UI gestione attività |
+| `/demo-garmin-sync` | GET | Demo sync one-shot con credenziali Garmin |
 
 ---
 
@@ -95,6 +103,17 @@ MONGODB_AUTO_MAINTENANCE=true
 
 # Opzionale — protegge l'endpoint di migrazione
 MIGRATION_API_SECRET=una-stringa-segreta-lunga
+API_ADMIN_SECRET=una-stringa-segreta-lunga
+
+# Garmin bridge server-side
+GARMIN_USERNAME=nome.utente.garmin
+GARMIN_PASSWORD=password-garmin
+GARMIN_DB_CLI_PATH=garmindb_cli.py
+GARMIN_TIMEOUT_MS=120000
+GARMIN_DOWNLOAD_LATEST_ACTIVITIES=50
+GARMIN_DOWNLOAD_ALL_ACTIVITIES=1000
+GARMIN_DB_BASE_DIR=HealthData
+GARMIN_METRIC=true
 ```
 
 > **Importante**: imposta `MONGODB_URI` e `MONGODB_DB_NAME` coerentemente con `mz-exploration` sia in locale che in produzione.
@@ -149,6 +168,18 @@ curl -s -X POST http://localhost:3000/api/activities/garmin/deduplicate \
   -H "Content-Type: application/json" -d '{"apply": true}'
 ```
 
+Sync GarminDB bridge:
+
+```bash
+curl -s -X POST http://localhost:3000/api/activities/garmin/sync \
+  -H "Content-Type: application/json" \
+  -H "x-api-secret: $API_ADMIN_SECRET" \
+  -d '{"mode":"latest"}'
+
+npm run garmin:sync
+npm run garmin:sync:all
+```
+
 ---
 
 ## Checklist pre-release
@@ -183,4 +214,3 @@ Prima di modificare: analizza i file, proponi piano breve, poi applica patch inc
 ---
 
 > **Troubleshooting**: se in UI vedi dati strani, il punto di partenza è sempre `convertGarminRaw` in `lib/garmin/converter.ts` — è il layer unico di traduzione verso il frontend.
-

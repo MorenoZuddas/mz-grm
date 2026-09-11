@@ -10,7 +10,9 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "garmin:sync": "node scripts/garmin-sync-bridge.mjs",
+    "garmin:sync:all": "node scripts/garmin-sync-bridge.mjs --all"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

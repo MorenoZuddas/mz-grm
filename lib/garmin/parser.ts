@@ -3,8 +3,8 @@ import crypto from 'crypto';
 export interface GarminActivityJSON {
   activityName?: string;
   name?: string;
-  activityType?: string;
-  sportType?: string;
+  activityType?: string | { typeKey?: string; key?: string; typeId?: number };
+  sportType?: string | { typeKey?: string; key?: string; sportTypeId?: number };
   activityId?: string | number;
   startTime?: string;
   startTimeGmt?: number;
@@ -65,10 +65,19 @@ function isValidDate(date: Date): boolean {
   return !Number.isNaN(date.getTime());
 }
 
-function normalizeActivityType(rawType?: string): string {
-  if (!rawType) return 'unknown';
+function extractTypeName(rawType?: GarminActivityJSON['activityType'] | GarminActivityJSON['sportType']): string | undefined {
+  if (typeof rawType === 'string') return rawType;
+  if (!rawType || typeof rawType !== 'object') return undefined;
+  if (typeof rawType.typeKey === 'string' && rawType.typeKey.trim().length > 0) return rawType.typeKey;
+  if (typeof rawType.key === 'string' && rawType.key.trim().length > 0) return rawType.key;
+  return undefined;
+}
 
-  const normalized = rawType.trim().toUpperCase();
+function normalizeActivityType(rawType?: GarminActivityJSON['activityType'] | GarminActivityJSON['sportType']): string {
+  const typeName = extractTypeName(rawType);
+  if (!typeName) return 'unknown';
+
+  const normalized = typeName.trim().toUpperCase();
   const typeMap: Record<string, string> = {
     RUNNING: 'running',
     CYCLING: 'cycling',
@@ -87,7 +96,7 @@ function normalizeActivityType(rawType?: string): string {
     return typeMap[normalized];
   }
 
-  return rawType.toLowerCase();
+  return typeName.toLowerCase();
 }
 
 function parseActivityDate(jsonData: GarminActivityJSON): Date {

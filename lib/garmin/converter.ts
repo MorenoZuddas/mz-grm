@@ -14,8 +14,8 @@
 export interface GarminRawActivity {
   activityId?: number;
   name?: string;
-  activityType?: string;
-  sportType?: string;
+  activityType?: string | { typeKey?: string; key?: string; typeId?: number };
+  sportType?: string | { typeKey?: string; key?: string; sportTypeId?: number };
   startTimeLocal?: number;
   startTimeGmt?: number;
   beginTimestamp?: number;
@@ -196,12 +196,38 @@ function hasGarminRawSignals(raw: GarminRawActivity): boolean {
     n(raw.startTimeGmt) !== null ||
     n(raw.beginTimestamp) !== null ||
     typeof raw.activityType === 'string' ||
-    typeof raw.sportType === 'string'
+    typeof raw.sportType === 'string' ||
+    (typeof raw.activityType === 'object' && raw.activityType !== null) ||
+    (typeof raw.sportType === 'object' && raw.sportType !== null)
   );
 }
 
-function normalizeType(activityType?: string, sportType?: string, canonicalType?: string): string {
-  const candidate = (activityType ?? sportType ?? canonicalType ?? '').trim();
+function extractTypeName(value: GarminRawActivity['activityType'] | GarminRawActivity['sportType']): string | undefined {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+
+  if (typeof value.typeKey === 'string' && value.typeKey.trim().length > 0) {
+    return value.typeKey;
+  }
+
+  if (typeof value.key === 'string' && value.key.trim().length > 0) {
+    return value.key;
+  }
+
+  return undefined;
+}
+
+function normalizeType(
+  activityType?: GarminRawActivity['activityType'],
+  sportType?: GarminRawActivity['sportType'],
+  canonicalType?: string
+): string {
+  const candidate = (extractTypeName(activityType) ?? extractTypeName(sportType) ?? canonicalType ?? '').trim();
   const raw = candidate.toUpperCase();
   const map: Record<string, string> = {
     RUNNING: 'running',

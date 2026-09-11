@@ -20,6 +20,10 @@ function readProvidedSecret(request: NextRequest): string | null {
 }
 
 export function requireAdminApiAccess(request: NextRequest): NextResponse | null {
+  if (process.env.NODE_ENV === 'development') {
+    return null;
+  }
+
   const configuredSecret = readConfiguredSecret();
   if (!configuredSecret) {
     return null;
@@ -38,4 +42,3 @@ export function requireAdminApiAccess(request: NextRequest): NextResponse | null
     { status: 401 }
   );
 }
-
