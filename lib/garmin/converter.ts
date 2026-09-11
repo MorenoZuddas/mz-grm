@@ -275,6 +275,30 @@ function pickDistanceMeters(
   return asMeters;
 }
 
+function resolveDistanceMeters(params: {
+  totalDistance?: number;
+  distanceM?: number;
+  rawDistance?: number;
+  durationSec: number | null;
+  avgSpeedMps: number | null;
+}): number | null {
+  const { totalDistance, distanceM, rawDistance, durationSec, avgSpeedMps } = params;
+
+  if (typeof distanceM === 'number' && Number.isFinite(distanceM)) {
+    return distanceM;
+  }
+
+  if (typeof totalDistance === 'number' && Number.isFinite(totalDistance)) {
+    return pickDistanceMeters(totalDistance, durationSec, avgSpeedMps);
+  }
+
+  if (typeof rawDistance === 'number' && Number.isFinite(rawDistance)) {
+    return pickDistanceMeters(rawDistance, durationSec, avgSpeedMps);
+  }
+
+  return null;
+}
+
 function looksLikeRawGarminEnergy(raw: GarminRawActivity): boolean {
   return (
     n(raw.startTimeLocal) !== null ||
@@ -329,16 +353,14 @@ export function convertGarminRaw(raw: GarminRawActivity): NormalizedActivity {
   const max_speed_mps = maxSpeedRaw !== null ? (fromRaw ? normalizeSpeed(maxSpeedRaw) : maxSpeedRaw) : null;
 
   // Distanza: raw Garmin puo' arrivare in cm; record gia' canonici in metri.
-  const candidateDistance = firstNumber(raw.totalDistance, raw.distance_m, raw.distance);
-  let distance_m: number | null = null;
-  if (candidateDistance !== null) {
-    if (raw.totalDistance !== undefined || raw.distance_m !== undefined) {
-      distance_m = Math.round(candidateDistance * 100) / 100;
-    } else {
-      const meters = pickDistanceMeters(candidateDistance, duration_sec, avg_speed_mps);
-      distance_m = Math.round(meters * 100) / 100;
-    }
-  }
+  const resolvedDistance = resolveDistanceMeters({
+    totalDistance: n(raw.totalDistance) ?? undefined,
+    distanceM: n(raw.distance_m) ?? undefined,
+    rawDistance: n(raw.distance) ?? undefined,
+    durationSec: duration_sec,
+    avgSpeedMps: avg_speed_mps,
+  });
+  const distance_m = resolvedDistance !== null ? Math.round(resolvedDistance * 100) / 100 : null;
 
   const pace_min_per_km = firstNumber(raw.pace_min_per_km, raw.avg_pace) ?? calcPace(avg_speed_mps);
 

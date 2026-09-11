@@ -226,6 +226,21 @@ function safeDurationMinutes(activity: StatsActivity): number {
   return 0;
 }
 
+function normalizeActivityType(type?: string): string {
+  return (type || '').trim().toLowerCase();
+}
+
+function isRunningActivity(type?: string): boolean {
+  const normalized = normalizeActivityType(type);
+  return (
+    normalized === 'running' ||
+    normalized === 'track_running' ||
+    normalized === 'trail_running' ||
+    normalized === 'road_running' ||
+    normalized === 'virtual_running'
+  );
+}
+
 const StatsCard = React.forwardRef<HTMLDivElement, StatsCardProps>(
   ({ type, activities = [], filters = {}, className, dataName, onPBClick }, ref) => {
     const filterActivities = (acts: StatsActivity[]): StatsActivity[] => {
@@ -244,25 +259,26 @@ const StatsCard = React.forwardRef<HTMLDivElement, StatsCardProps>(
     };
 
     const filteredActivities = filterActivities(activities);
+    const runningActivities = filteredActivities.filter((activity) => isRunningActivity(activity.type));
 
     const calculateValue = () => {
       switch (type) {
         case 'total_runs':
-          return filteredActivities.length;
+         return runningActivities.length;
         case 'total_distance': {
-          const totalKm = filteredActivities.reduce((sum, a) => sum + safeDistanceMeters(a) / 1000, 0);
-          return `${totalKm.toFixed(1)} km`;
+         const totalKm = runningActivities.reduce((sum, a) => sum + safeDistanceMeters(a) / 1000, 0);
+         return `${totalKm.toFixed(1)} km`;
         }
         case 'longest_run': {
-          const maxDistMeters = filteredActivities.reduce((max, a) => {
-            const current = safeDistanceMeters(a);
-            return current > max ? current : max;
-          }, 0);
+         const maxDistMeters = runningActivities.reduce((max, a) => {
+           const current = safeDistanceMeters(a);
+           return current > max ? current : max;
+         }, 0);
            return `${(maxDistMeters / 1000).toFixed(2)} km`;
          }
         case 'total_hours': {
-          const totalMinutes = filteredActivities.reduce((sum, a) => sum + safeDurationMinutes(a), 0);
-          return Math.round(totalMinutes / 60);
+         const totalMinutes = runningActivities.reduce((sum, a) => sum + safeDurationMinutes(a), 0);
+         return Math.round(totalMinutes / 60);
         }
         case 'pb_100':
         case 'pb_200':
@@ -281,8 +297,8 @@ const StatsCard = React.forwardRef<HTMLDivElement, StatsCardProps>(
     const findActivityForStat = (): StatsActivity | null => {
       switch (type) {
         case 'longest_run':
-          if (filteredActivities.length === 0) return null;
-          return filteredActivities.reduce((max, act) =>
+          if (runningActivities.length === 0) return null;
+          return runningActivities.reduce((max, act) =>
             safeDistanceMeters(act) > safeDistanceMeters(max) ? act : max
           );
         case 'pb_100':
