@@ -140,7 +140,9 @@ function parseMovingSeconds(jsonData: GarminActivityJSON): number | undefined {
 function parseDistanceMeters(jsonData: GarminActivityJSON, durationSec: number): number {
   const totalDistance = toNumber(jsonData.totalDistance);
   if (totalDistance !== undefined) {
-    return totalDistance;
+    const speedAssumingMeters = durationSec > 0 ? totalDistance / durationSec : 0;
+    const shouldConvertCm = speedAssumingMeters > 25 || totalDistance > 1_000_000;
+    return shouldConvertCm ? totalDistance / 100 : totalDistance;
   }
 
   const rawDistance = toNumber(jsonData.distance);

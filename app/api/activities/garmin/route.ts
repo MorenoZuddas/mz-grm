@@ -8,6 +8,7 @@ import { removeDuplicateActivitiesNow } from '@/lib/db/maintenance';
 import { getAssetsByActivityIds } from '@/lib/cloudinary/server';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 function parseCacheTtlMs(rawValue: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(rawValue || '', 10);
