@@ -11,6 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { StatsCard, type StatsActivity, type StatsType } from "@/components/ui/card"
 import { PageShell } from '@/components/generic'
 
@@ -60,6 +67,16 @@ interface ApiResponseEnvelope<TData = unknown> {
   message?: string;
   error?: string;
   data?: TData;
+}
+
+interface StatusApiEnvelope {
+  status?: string;
+  message?: string;
+  error?: string;
+  database?: {
+    total_activities?: number;
+    total_sync_logs?: number;
+  };
 }
 
 const NO_STORE_GET = {
@@ -177,6 +194,7 @@ export default function DemoGarminPage() {
   const [loadingDB, setLoadingDB] = useState(false);
   const [loadingUpload, setLoadingUpload] = useState(false);
   const [loadingManual, setLoadingManual] = useState(false);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [dbStatus, setDbStatus] = useState<{ total_activities: number; total_sync_logs: number } | null>(null);
   const [dbMessage, setDbMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
@@ -201,6 +219,7 @@ export default function DemoGarminPage() {
   });
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
+  const showAdminDiagnostics = process.env.NODE_ENV !== 'production';
 
   const getActivityKey = (activity: Activity, idx: number): string => {
     if (activity._id) return `db-${activity._id}`;
@@ -224,9 +243,15 @@ export default function DemoGarminPage() {
     setDbMessage(null);
     try {
       const res = await fetch('/api/test-db', NO_STORE_GET);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error || 'Errore sconosciuto');
-      setDbMessage({ text: `✅ Connesso — Attività: ${data.data.collections.activities}`, ok: true });
+      const envelope = await parseApiEnvelope<{
+        collections?: {
+          activities?: number;
+        };
+      }>(res);
+      if (envelope.status !== 'success' || !envelope.data) {
+        throw new Error(envelope.message || envelope.error || 'Errore sconosciuto');
+      }
+      setDbMessage({ text: `✅ Connesso — Attività: ${envelope.data.collections?.activities ?? 0}`, ok: true });
     } catch (error) {
       setDbMessage({ text: `❌ ${error instanceof Error ? error.message : 'Errore connessione'}`, ok: false });
     } finally {
@@ -240,11 +265,14 @@ export default function DemoGarminPage() {
     setDbMessage(null);
     try {
       const res = await fetch('/api/status', NO_STORE_GET);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error || 'Errore sconosciuto');
+      const envelope = await parseApiEnvelope<unknown>(res) as StatusApiEnvelope;
+      const databasePayload = envelope.database;
+      if (envelope.status !== 'success' || !databasePayload) {
+        throw new Error(envelope.message || envelope.error || 'Errore sconosciuto');
+      }
       setDbStatus({
-        total_activities: data.database.total_activities,
-        total_sync_logs: data.database.total_sync_logs,
+        total_activities: databasePayload.total_activities ?? 0,
+        total_sync_logs: databasePayload.total_sync_logs ?? 0,
       });
       setDbMessage({ text: '✅ Status aggiornato', ok: true });
     } catch (error) {
@@ -354,6 +382,7 @@ export default function DemoGarminPage() {
       }
 
       setUploadResult(aggregated);
+      setIsUploadDialogOpen(false);
       const removed = aggregated.maintenance?.total_duplicates_removed;
       const duplicatesInDb = aggregated.duplicates_found_in_db ?? 0;
       const skipped = aggregated.skipped ?? 0;
@@ -532,24 +561,36 @@ export default function DemoGarminPage() {
           {/* Pannello Database Status */}
           <div className="bg-slate-700 rounded-lg p-6 shadow-xl dg-db-panel-2" data-testid="dg-db-panel-2">
             <h2 className="text-xl font-bold text-white mb-4 dg-db-title-2" data-testid="dg-db-title-2">🔗 Database Status</h2>
+            {showAdminDiagnostics ? (
+              <>
+                <button
+                  onClick={handleTestConnection}
+                  disabled={loadingDB}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 text-white font-bold py-3 px-4 rounded transition dg-btn-test-conn-2"
+                  data-testid="dg-btn-test-conn-2"
+                >
+                  {loadingDB ? '⏳ ...' : '🔌 Test Connection'}
+                </button>
+                <button
+                  onClick={handleCheckStatus}
+                  disabled={loadingDB}
+                  className="w-full mt-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-500 text-white font-bold py-3 px-4 rounded transition dg-btn-status-2"
+                  data-testid="dg-btn-status-2"
+                >
+                  {loadingDB ? '⏳ ...' : '📊 Check Status'}
+                </button>
+              </>
+            ) : (
+              <div className="rounded border border-slate-600 bg-slate-800 p-3 text-sm text-slate-200">
+                Endpoint diagnostici admin protetti in produzione.
+              </div>
+            )}
             <button
-              onClick={handleTestConnection}
-              disabled={loadingDB}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 text-white font-bold py-3 px-4 rounded transition dg-btn-test-conn-2"
-              data-testid="dg-btn-test-conn-2"
-            >
-              {loadingDB ? '⏳ ...' : '🔌 Test Connection'}
-            </button>
-            <button
-              onClick={handleCheckStatus}
-              disabled={loadingDB}
-              className="w-full mt-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-500 text-white font-bold py-3 px-4 rounded transition dg-btn-status-2"
-              data-testid="dg-btn-status-2"
-            >
-              {loadingDB ? '⏳ ...' : '📊 Check Status'}
-            </button>
-            <button
-              onClick={() => void handleLoadActivities()}
+              onClick={() => {
+                setUploadError(null);
+                setUploadResult(null);
+                setIsUploadDialogOpen(true);
+              }}
               disabled={loadingDB}
               className="w-full mt-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-500 text-white font-bold py-3 px-4 rounded transition dg-btn-load-2"
               data-testid="dg-btn-load-2"
@@ -629,6 +670,58 @@ export default function DemoGarminPage() {
             )}
           </div>
         </div>
+
+        <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+          <DialogContent className="border-slate-700 bg-slate-800 text-white sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>📂 Importa JSON Garmin</DialogTitle>
+              <DialogDescription className="text-slate-300">
+                Esporta da Garmin Connect in formato JSON, poi trascina il file qui o clicca per selezionarlo.
+              </DialogDescription>
+            </DialogHeader>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors dg-drop-zone-modal-2 ${
+                dragOver ? 'border-blue-400 bg-blue-900/30' : 'border-slate-500 hover:border-blue-500 hover:bg-slate-700'
+              }`}
+              data-testid="dg-drop-zone-modal-2"
+            >
+              <div className="text-4xl mb-2">📁</div>
+              <p className="text-white font-semibold mb-1">Trascina il file JSON qui</p>
+              <p className="text-gray-400 text-sm">oppure clicca per selezionare</p>
+              <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileChange} className="hidden" data-testid="dg-file-input-2" />
+            </div>
+
+            {loadingUpload && (
+              <div className="mt-2 rounded bg-slate-900 p-3 text-center text-sm text-yellow-300">
+                ⏳ Importazione in corso...
+              </div>
+            )}
+            {uploadResult && !loadingUpload && (
+              <div className="mt-2 rounded border border-green-600 bg-green-900/50 p-4 text-sm text-white">
+                <p className="mb-1 font-bold text-green-400">✅ Import completato!</p>
+                <p>📦 Processate: <strong>{uploadResult.total_processed}</strong></p>
+                <p>✅ Salvate: <strong className="text-green-400">{uploadResult.saved}</strong></p>
+                <p>
+                  ⏭️ Saltate (duplicati):{' '}
+                  <strong className="text-yellow-400">
+                    {(uploadResult.skipped ?? 0) +
+                      (uploadResult.duplicates_found_in_db ?? 0) +
+                      (uploadResult.maintenance?.total_duplicates_removed ?? 0)}
+                  </strong>
+                </p>
+              </div>
+            )}
+            {uploadError && !loadingUpload && (
+              <div className="mt-2 rounded border border-red-600 bg-red-900/50 p-3 text-sm text-red-300">
+                {uploadError}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Pannello Aggiungi Manualmente */}
         <div className="bg-slate-700 rounded-lg p-6 shadow-xl mb-8 dg-manual-panel-3" data-testid="dg-manual-panel-3">

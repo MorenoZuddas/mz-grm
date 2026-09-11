@@ -122,5 +122,3 @@ fi
 
 echo "SMOKE TEST: CHECK MANUALLY (some expectations did not match)"
 exit 2
-
-
