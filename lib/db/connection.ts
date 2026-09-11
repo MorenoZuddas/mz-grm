@@ -51,10 +51,10 @@ export async function connectToDatabase(): Promise<Connection> {
     }
   }
 
-  const configuredDbName = process.env.MONGODB_DB_NAME || 'mz-exploration';
-  const resolvedDbName = process.env.NODE_ENV === 'production'
-    ? (configuredDbName === 'test' ? 'mz-experience' : configuredDbName)
-    : configuredDbName;
+  const resolvedDbName =
+    process.env.NODE_ENV === 'production'
+      ? (process.env.MONGODB_DB_NAME || 'mz-exploration')
+      : (process.env.MONGODB_DB_NAME || 'test');
 
   console.log('🔗 Creando nuova connessione a MongoDB...');
 
