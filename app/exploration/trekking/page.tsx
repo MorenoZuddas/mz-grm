@@ -148,16 +148,10 @@ export default function TrekkingPage() {
     const fetchActivities = async () => {
       const cached = getCachedActivities<Activity[]>('trekking');
 
-      if (cached && cached.length > 0) {
-        if (isActive) {
-          setActivities(cached);
-          setLoading(false);
-        }
-      }
-
       try {
         const response = await fetch('/api/activities/garmin?group=trekking&limit=20&offset=0', {
           signal: abortController.signal,
+          cache: 'no-store',
         });
         if (!response.ok) {
           const raw = await response.text();

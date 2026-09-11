@@ -311,17 +311,10 @@ export default function RunningPage() {
          setLoadingMore(true);
        }
 
-       if (cached && cached.length > 0 && !isLoadingMore) {
-         const normalizedCached = cached.map(normalizeRunningActivity);
-         if (isActive) {
-           setActivities(normalizedCached);
-           setLoading(false);
-         }
-       }
-
        try {
          const response = await fetch(`/api/activities/garmin?${requestQuery}`, {
            signal: abortController.signal,
+           cache: 'no-store',
          });
          if (!response.ok) {
            const raw = await response.text();
